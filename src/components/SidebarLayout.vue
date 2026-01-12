@@ -23,7 +23,7 @@
       </div>
 
       <!-- Menu -->
-      <nav class="flex-1 py-4 space-y-1">
+      <nav class="flex-1 py-4 space-y-2">
         <SidebarItem
           v-for="item in menuOptions"
           :key="item.key"

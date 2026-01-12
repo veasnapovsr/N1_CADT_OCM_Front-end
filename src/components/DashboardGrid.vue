@@ -2,57 +2,52 @@
   <section class="py-12">
     <!-- Title -->
     <h2
-      class="text-center
-             font-muol
-             text-3xl md:text-4xl
-             tracking-wide
-             leading-snug
-             text-blue-800
-             mb-12"
+      class="mb-12 text-center font-muol text-3xl tracking-wide
+             leading-snug text-blue-800 md:text-4xl"
     >
       ប្រព័ន្ធគ្រប់គ្រងព័ត៌មានរដ្ឋបាល
     </h2>
 
     <!-- Grid -->
-    <div class="max-w-8xl mx-auto px-6 grid gap-3">
+    <div class="mx-auto max-w-8xl px-6 grid gap-3">
       <!-- Row 1 -->
-      <div class="grid md:grid-cols-2 gap-3">
+      <div class="grid gap-3 md:grid-cols-2">
         <DashboardCard
           icon="calendar"
           title="កាលវិភាគ"
           description="គ្រប់គ្រង និងតាមដានកាលវិភាគ"
-          @click="go('schedule')"
+          @click="goToAttendance"
         />
 
         <DashboardCard
           icon="share"
           title="ប្រព័ន្ធតភ្ជាប់ទិន្នន័យ"
           description="ភ្ជាប់ និងចែករំលែកព័ត៌មាន"
-          @click="go('integration')"
+          @click="goTo('integration')"
         />
       </div>
 
       <!-- Row 2 -->
-      <div class="grid md:grid-cols-3 gap-3">
+      <div class="grid gap-3 md:grid-cols-3">
         <DashboardCard
           icon="users"
           title="ការគ្រប់គ្រងអ្នកប្រើប្រាស់"
           description="គ្រប់គ្រងគណនី និងសិទ្ធិ"
-          @click="go('users')"
+          @click="goTo('users')"
         />
 
         <DashboardCard
           icon="file"
           title="ឯកសារ PDF និងរបាយការណ៍"
           description="មើល និងទាញយកឯកសារ"
-          @click="go('documents')"
+          @click="goTo('documents')"
         />
 
         <DashboardCard
           icon="monitor"
           title="ប្រព័ន្ធត្រួតពិនិត្យ"
           description="តាមដានស្ថានភាពប្រព័ន្ធ"
-          @click="go('monitor')"
+          @click="goTo('monitor')"
         />
       </div>
     </div>
@@ -60,9 +55,22 @@
 </template>
 
 <script setup>
-import DashboardCard from "./DashboardCard.vue"
+import { useRouter } from "vue-router"
+import DashboardCard from "@/components/DashboardCard.vue"
 
-const go = (route) => {
-  console.log("Navigate to:", route)
+const router = useRouter()
+
+/**
+ * Go to Attendance page (WITH sidebar)
+ */
+const goToAttendance = () => {
+  router.push({ name: "attendance" })
+}
+
+/**
+ * Placeholder for future routes
+ */
+const goTo = (name) => {
+  console.warn("Route not implemented:", name)
 }
 </script>

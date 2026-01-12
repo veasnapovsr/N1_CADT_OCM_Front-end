@@ -3,7 +3,7 @@
     <!-- Main button -->
     <button
       class="w-full flex items-center justify-between gap-3 px-4 py-2 text-sm transition
-             hover:bg-[#FFCD00]/20"
+             hover:bg-yellow/200"
       :class="active ? 'text-black font-medium' : 'text-white'"
       @click="onClick"
     >

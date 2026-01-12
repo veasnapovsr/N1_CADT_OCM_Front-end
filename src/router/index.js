@@ -1,21 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AuthLayout from '../layouts/AuthLayout.vue'
+import DashboardLayout from '../layouts/DashboardLayout.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 
-import Login from '../views/login.vue'
+import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
+import Attendance from '../views/Attendance.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    // 1️⃣ App always starts at /login
-    {
-      path: '/',
-      redirect: '/login'
-    },
-
-    // 2️⃣ Login page (NO sidebar)
+    // 🔐 AUTH (no sidebar)
     {
       path: '/login',
       component: AuthLayout,
@@ -28,10 +24,10 @@ const router = createRouter({
       ]
     },
 
-    // 3️⃣ Dashboard (WITH sidebar)
+    // 📊 DASHBOARD (no sidebar)
     {
       path: '/dashboard',
-      component: AppLayout,
+      component: DashboardLayout,
       children: [
         {
           path: '',
@@ -39,6 +35,25 @@ const router = createRouter({
           component: Dashboard
         }
       ]
+    },
+
+    // 🧱 APP PAGES (WITH sidebar)
+    {
+      path: '/app',
+      component: AppLayout,
+      children: [
+        {
+          path: 'attendance',
+          name: 'attendance',
+          component: Attendance
+        }
+      ]
+    },
+
+    // Default
+    {
+      path: '/',
+      redirect: '/login'
     }
   ]
 })
