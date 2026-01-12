@@ -16,6 +16,7 @@ import MyDocuments from '../views/pdf/MyDocuments.vue'
 import History from '../views/pdf/History.vue'
 import SystemLogs from '../views/pdf/SystemLogs.vue'
 import Profile from '../views/pdf/Profile.vue'
+import NotFound from '../views/pdf/NotFound.vue'
 
 /* ----------------------------------
    ROUTES
@@ -65,7 +66,7 @@ const routes = [
   //  PDF MODULE (PROTECTED)
   {
     path: '/pdf',
-    component: SidebarLayout,
+    // component: SidebarLayout,
     meta: { requiresAuth: true },
     children: [
       {
@@ -107,10 +108,13 @@ const routes = [
   },
 
   //  NOT FOUND
-  {
+  // {
+  //   path: '/:pathMatch(.*)*',
+  //   redirect: '/login'
+  // },
+  { 
     path: '/:pathMatch(.*)*',
-    redirect: '/login'
-  }
+    component: NotFound }
 ]
 
 /* ----------------------------------
