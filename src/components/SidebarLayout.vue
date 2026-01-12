@@ -29,7 +29,7 @@
           :key="item.key"
           :item="item"
           :collapsed="collapsed"
-          :active="active === item.key"
+          :active="activeKey === item.key"
           @select="onSelect"
         />
       </nav>
@@ -64,18 +64,24 @@ import {
   Users,
   FileText,
   CalendarDays,
-  Menu
+  Menu,
+  Folder,
+  History,
+  ClipboardList,
+  User
 } from 'lucide-vue-next'
 
+/* ===============================
+   BASIC STATE
+================================ */
 const router = useRouter()
 const route = useRoute()
-
 const collapsed = ref(false)
 
-/**
- * Sidebar menu (routes are SOURCE OF TRUTH)
- */
-const menuOptions = [
+/* ===============================
+   OLD APP SIDEBAR (UNCHANGED)
+================================ */
+const appMenuOptions = [
   {
     key: 'dashboard',
     label: 'ទំព័រដើម',
@@ -114,17 +120,85 @@ const menuOptions = [
   }
 ]
 
-/**
- * Active menu derived from current route
- */
-const active = computed(() => {
-  const match = menuOptions.find(item =>
-    route.path.startsWith(item.path)
-  )
-  return match?.key
+/* ===============================
+   PDF DOCUMENT SIDEBAR
+================================ */
+const pdfMenuOptions = [
+  {
+    key: 'pdf-dashboard',
+    label: 'ទំព័រដើម',
+    icon: Home,
+    path: '/dashboard'
+  },
+  {
+    key: 'flow',
+    label: 'លំហូរឯកសារ',
+    icon: FileText,
+    path: '/pdf/flow'
+  },
+  {
+    key: 'my-documents',
+    label: 'ឯកសាររបស់ខ្ញុំ',
+    icon: Folder,
+    path: '/pdf/my-documents'
+  },
+  {
+    key: 'history',
+    label: 'ប្រវត្តិឯកសារ',
+    icon: History,
+    path: '/pdf/history'
+  },
+  {
+    key: 'logs',
+    label: 'Logs ប្រព័ន្ធគ្រប់គ្រង',
+    icon: ClipboardList,
+    path: '/pdf/logs'
+  },
+  {
+    key: 'profile',
+    label: 'ព័ត៌មានផ្ទាល់ខ្លួន',
+    icon: User,
+    path: '/pdf/profile'
+  }
+]
+
+/* ===============================
+   SIDEBAR SWITCH (BY ROUTE)
+================================ */
+const menuOptions = computed(() => {
+  return route.path.startsWith('/pdf')
+    ? pdfMenuOptions
+    : appMenuOptions
 })
 
+/* ===============================
+   ACTIVE MENU (FIXED & STABLE)
+================================ */
+const activeKey = computed(() => {
+  const currentPath = route.path
+
+  // 1️⃣ Exact match (highest priority)
+  const exact = menuOptions.value.find(
+    item => item.path === currentPath
+  )
+  if (exact) return exact.key
+
+  // 2️⃣ Child route match (stable fallback)
+  const prefix = menuOptions.value.find(
+    item =>
+      currentPath.startsWith(item.path + '/') ||
+      currentPath === item.path
+  )
+
+  return prefix?.key
+})
+
+/* ===============================
+   NAVIGATION
+================================ */
 function onSelect(item) {
-  router.push(item.path)
+  if (item.path !== route.path) {
+    router.push(item.path)
+  }
 }
 </script>

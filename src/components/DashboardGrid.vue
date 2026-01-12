@@ -23,7 +23,7 @@
           icon="share"
           title="ប្រព័ន្ធតភ្ជាប់ទិន្នន័យ"
           description="ភ្ជាប់ និងចែករំលែកព័ត៌មាន"
-          @click="goTo('integration')"
+          @click="notImplemented('integration')"
         />
       </div>
 
@@ -33,21 +33,22 @@
           icon="users"
           title="ការគ្រប់គ្រងអ្នកប្រើប្រាស់"
           description="គ្រប់គ្រងគណនី និងសិទ្ធិ"
-          @click="goTo('users')"
+          @click="notImplemented('users')"
         />
 
+        <!-- ✅ PDF DOCUMENT CARD -->
         <DashboardCard
           icon="file"
           title="ឯកសារ PDF និងរបាយការណ៍"
           description="មើល និងទាញយកឯកសារ"
-          @click="goTo('documents')"
+          @click="goToPdf"
         />
 
         <DashboardCard
           icon="monitor"
           title="ប្រព័ន្ធត្រួតពិនិត្យ"
           description="តាមដានស្ថានភាពប្រព័ន្ធ"
-          @click="goTo('monitor')"
+          @click="notImplemented('monitor')"
         />
       </div>
     </div>
@@ -61,16 +62,23 @@ import DashboardCard from "@/components/DashboardCard.vue"
 const router = useRouter()
 
 /**
- * Go to Attendance page (WITH sidebar)
+ * OLD APP SIDEBAR → Attendance
  */
 const goToAttendance = () => {
   router.push({ name: "attendance" })
 }
 
 /**
- * Placeholder for future routes
+ * PDF DOCUMENT SYSTEM → NEW SIDEBAR
  */
-const goTo = (name) => {
-  console.warn("Route not implemented:", name)
+const goToPdf = () => {
+  router.push("/pdf")
+}
+
+/**
+ * Temporary placeholder for future modules
+ */
+const notImplemented = (name) => {
+  console.warn("Route not implemented yet:", name)
 }
 </script>
