@@ -18,5 +18,4 @@
 
 <script setup>
 import DashboardGrid from "../components/DashboardGrid.vue"
-import realbackground from "../assets/realbackground.jpg"
 </script>

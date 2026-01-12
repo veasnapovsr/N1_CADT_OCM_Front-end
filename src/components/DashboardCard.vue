@@ -1,74 +1,78 @@
 <template>
-  <button
-    class="group relative overflow-hidden
-           w-full min-h-[320px]
-           p-8 text-white rounded-none
-           flex items-center justify-center
-           focus:outline-none focus:ring-4 focus:ring-blue-300"
-  >
-    <!-- 🔵 Base background (always visible) -->
-    <div class="absolute inset-0 bg-blue-900"></div>
-
-    <!-- 🌈 Gradient overlay (fade in on hover) -->
-    <div
-      class="absolute inset-0 opacity-0
-             bg-gradient-to-r
-             from-blue-500 via-blue-900 to-indigo-500
-             bg-[length:180%_180%]
-             transition-opacity duration-500
-             group-hover:opacity-80
-             group-hover:animate-gradient-soft-visible"
-    ></div>
-
-    <!-- CONTENT -->
-    <div
-      class="relative z-10
-             flex flex-col items-center justify-center
-             text-center"
+  <section class="py-16">
+    <!-- Title -->
+    <h2
+      class="mb-14 text-center
+             font-khmer font-bold
+             text-3xl md:text-4xl
+             tracking-wide
+             text-black"
     >
-      <!-- Icon -->
-      <component
-        :is="iconComponent"
-        class="w-20 h-20 text-white opacity-95
-               transition-transform duration-300
-               group-hover:scale-110"
+      ប្រព័ន្ធគ្រប់គ្រងព័ត៌មានរដ្ឋបាល
+    </h2>
+
+    <!-- Grid -->
+    <div
+      class="mx-auto max-w-6xl px-6
+             grid gap-6
+             grid-cols-2
+             md:grid-cols-3
+             lg:grid-cols-5"
+    >
+      <DashboardCard
+        icon="calendar"
+        title="កាលវិភាគ"
+        description="គ្រប់គ្រង និងតាមដានកាលវិភាគ"
+        @click="goToAttendance"
       />
 
-      <!-- Text -->
-      <div class="mt-6">
-        <h3 class="text-lg font-semibold mb-2">
-          {{ title }}
-        </h3>
-        <p class="text-sm text-blue-100 leading-relaxed">
-          {{ description }}
-        </p>
-      </div>
+      <DashboardCard
+        icon="share"
+        title="ប្រព័ន្ធតភ្ជាប់ទិន្នន័យ"
+        description="ភ្ជាប់ និងចែករំលែកព័ត៌មាន"
+        @click="notImplemented('integration')"
+      />
+
+      <DashboardCard
+        icon="users"
+        title="ការគ្រប់គ្រងអ្នកប្រើប្រាស់"
+        description="គ្រប់គ្រងគណនី និងសិទ្ធិ"
+        @click="notImplemented('users')"
+      />
+
+      <DashboardCard
+        icon="file"
+        title="ឯកសារ PDF និងរបាយការណ៍"
+        description="មើល និងទាញយកឯកសារ"
+        @click="goToPdf"
+      />
+
+      <DashboardCard
+        icon="monitor"
+        title="ប្រព័ន្ធត្រួតពិនិត្យ"
+        description="តាមដានស្ថានភាពប្រព័ន្ធ"
+        @click="notImplemented('monitor')"
+      />
     </div>
-  </button>
+  </section>
 </template>
 
 <script setup>
-import {
-  Calendar,
-  Share2,
-  Users,
-  FileText,
-  Monitor
-} from "lucide-vue-next"
+import { useRouter } from "vue-router"
+import DashboardCard from "@/components/DashboardCard.vue"
 
-const props = defineProps({
-  icon: String,
-  title: String,
-  description: String
-})
+const router = useRouter()
 
-const icons = {
-  calendar: Calendar,
-  share: Share2,
-  users: Users,
-  file: FileText,
-  monitor: Monitor
+/* ✅ ROUTING UNCHANGED */
+const goToAttendance = () => {
+  router.push({ name: "attendance" })
 }
 
-const iconComponent = icons[props.icon]
+const goToPdf = () => {
+  router.push("/pdf")
+}
+
+const notImplemented = (name) => {
+  console.warn("Route not implemented yet:", name)
+}
 </script>
