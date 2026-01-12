@@ -1,7 +1,3 @@
 <template>
-  <SidebarLayout />
+  <router-view />
 </template>
-
-<script setup>
-import SidebarLayout from './components/SidebarLayout.vue'
-</script>

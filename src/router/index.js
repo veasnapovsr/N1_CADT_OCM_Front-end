@@ -1,17 +1,46 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-const stub = (name) => ({
-  template: `<div class="text-2xl font-semibold">${name}</div>`
-})
+import AuthLayout from '../layouts/AuthLayout.vue'
+import AppLayout from '../layouts/AppLayout.vue'
 
-export default createRouter({
+import Login from '../views/login.vue'
+import Dashboard from '../views/Dashboard.vue'
+
+const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'dashboard', component: stub('ទំព័រដើម') },
-    { path: '/attendance', name: 'attendance', component: stub('វត្តមាន') },
-    { path: '/cabinet', name: 'cabinet', component: stub('លេខទីស្តីការគណៈរដ្ឋមន្ត្រី') },
-    { path: '/officials', name: 'officials', component: stub('មន្ត្រីរាជការមុខងារសាធារណៈ') },
-    { path: '/documents', name: 'documents', component: stub('ឯកសារច្បាប់និងលិខិតបទដ្ឋាន') },
-    { path: '/meetings', name: 'meetings', component: stub('កិច្ចប្រជុំគណៈរដ្ឋមន្ត្រី') }
+    // 1️⃣ App always starts at /login
+    {
+      path: '/',
+      redirect: '/login'
+    },
+
+    // 2️⃣ Login page (NO sidebar)
+    {
+      path: '/login',
+      component: AuthLayout,
+      children: [
+        {
+          path: '',
+          name: 'login',
+          component: Login
+        }
+      ]
+    },
+
+    // 3️⃣ Dashboard (WITH sidebar)
+    {
+      path: '/dashboard',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'dashboard',
+          component: Dashboard
+        }
+      ]
+    }
   ]
 })
+
+export default router
