@@ -483,7 +483,7 @@ body:not(.app_snav_open) .app_snav:hover{
     justify-content: center;
     height: 100vh;
     background-color: var(--ocm-nav-bg);
-    background-image: url(../img/pattern1.png);
+    background-image: url(../assets/pattern1.png);
     background-size: 330px;
 }
 .login-action-login .ocm_footer, .login_ac.ocm_footer, .login-action-login .app_footer{
