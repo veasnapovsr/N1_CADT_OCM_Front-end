@@ -7,7 +7,7 @@
 				<div class="ocm_cwr">
 					<h2 class="h wttt ocm_ptitle t-lspace">						
 						ផ្ទាំងគ្រប់គ្រងលំហូរឯកសារ</h2>
-						<router-link to="/pdf/flow" class="oc_nbtn t-lspace"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="5 5 14 14"><path d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z" fill="currentColor"></path></svg>បង្កើតឯកសារ</router-link>
+						<router-link to="/pdf/documents-add" class="oc_nbtn t-lspace"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="5 5 14 14"><path d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z" fill="currentColor"></path></svg>បង្កើតឯកសារ</router-link>
 				</div>
 								
 				<div class="ocm_bfw ocm_stat">

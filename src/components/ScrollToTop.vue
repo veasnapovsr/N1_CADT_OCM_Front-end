@@ -35,8 +35,8 @@ onUnmounted(() => {
   position: fixed;
   width: 33px;
   height: 33px;
-  bottom: 30px;
-  right: 25px;
+  bottom: 10px;
+  right: 10px;
   background: var(--ocm-sec-color);
   color: #fff;
   border: none;

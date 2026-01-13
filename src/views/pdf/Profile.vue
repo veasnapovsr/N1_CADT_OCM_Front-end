@@ -5,7 +5,7 @@
   <div class="sw">
 				<div class="app_content">
 				<div class="ocm_cwr">
-					<h2 class="h wttt">ព័ត៌មានផ្ទាល់ខ្លួន</h2>
+					<h2 class="h wttt t-lspace">ព័ត៌មានផ្ទាល់ខ្លួន</h2>
 				</div>
     <div class="ocm_card_wr">
       <div class="ocm_card_content ocm_txt_w">

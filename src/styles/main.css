@@ -538,6 +538,12 @@ body:not(.app_snav_open) .app_snav:hover{
 .input-wrapper .prefix svg {
   width: 1.2em;
 }
+.input-wrapper .pre_end{
+  pointer-events: auto;
+  cursor: pointer;
+  left: auto;
+  right: 0px;
+}
 .forgetmenot{
   font-size: 13px;
   display: flex;
@@ -644,9 +650,6 @@ body:not(.app_snav_open) .app_snav:hover{
 }
 .app-logo img{
     width: 40px;
-}
-.app_list{
-    margin-top: 95px;
 }
 .app-right{
     display: flex;
@@ -771,7 +774,7 @@ body:not(.app_snav_open) .app_snav:hover{
     border: 1px solid var(--ocm-app-border);
     background: var(--ocm-app-bg);
     height: 140px;
-    width: 180px;
+    width: 165px;
     text-align: center;
     border-radius: 10px;
     display: flex;
@@ -938,6 +941,7 @@ body:not(.app_snav_open) .app_snav:hover{
     height: auto;
   }
   .app_inner{
+    padding-top: 90px;
     height: calc(100vh - 150px);
     display: flex;
     flex-direction: column;
@@ -1388,6 +1392,13 @@ table.wp-list-table .type-ocmdb_data .column-title .row-actions .trash a{
 table.wp-list-table .type-ocmdb_data .column-title .row-actions .trash a:before{
   font-family: dashicons;
   width: 9px;
+}
+.ocm-table tr td.td_empt{
+  border-right: 1px solid var(--ocm-app-border);
+  border-radius: 0px 0px 6px 6px !important;
+}
+.p0{
+  padding: 0px !important;
 }
 .ocm_dt_empt{
   background: var(--ocm-app-bg);
@@ -1916,6 +1927,16 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
 .pinfo_i svg{
   width: 1.1em;
   height: auto;
+}
+.fs-95{
+  font-size: 95%;
+}
+.ellip-2{
+  overflow: hidden;
+  display: -webkit-box;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 /* ocm grid */
 .ocmopt-col{

@@ -1,11 +1,11 @@
 <template>
-  <Header title="លំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
+  <Header />
   <section class="appppw">
   <Aside />
   <div class="sw">
 				<div class="app_content">
 				<div class="ocm_cwr">
-					<h2 class="h wttt t-lspace">Logs ប្រព័ន្ធគ្រប់គ្រង</h2>
+					<h2 class="h wttt t-lspace">អំពីប្រព័ន្ធកម្មវិធី</h2>
 				</div>
     <div class="ocm_card_wr">
       <div class="ocm_card_content ocm_txt_w">

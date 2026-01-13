@@ -12,10 +12,16 @@ import Attendance from '../views/Attendance.vue'
 
 // PDF Views
 import Flow from '../views/pdf/Flow.vue'
+import FlowDashboard from '../views/pdf/FlowDashboard.vue'
 import MyDocuments from '../views/pdf/MyDocuments.vue'
+import DocumentAdd from '../views/pdf/DocumentAdd.vue'
 import History from '../views/pdf/History.vue'
 import SystemLogs from '../views/pdf/SystemLogs.vue'
 import Profile from '../views/pdf/Profile.vue'
+import About from '../views/pdf/About.vue'
+import AllNotification from '../views/pdf/AllNotification.vue'
+import FeedBack from '../views/pdf/FeedBack.vue'
+import Help from '../views/pdf/Help.vue'
 import NotFound from '../views/pdf/NotFound.vue'
 
 /* ----------------------------------
@@ -35,10 +41,11 @@ const routes = [
     ]
   },
 
+  
   //  DASHBOARD (PROTECTED)
   {
     path: '/dashboard',
-    component: DashboardLayout,
+    // component: DashboardLayout,
     meta: { requiresAuth: true },
     children: [
       {
@@ -74,6 +81,11 @@ const routes = [
         redirect: '/pdf/flow'
       },
       {
+        path: 'flow-dash',
+        name: 'pdf-flow-dash',
+        component: FlowDashboard
+      },
+      {
         path: 'flow',
         name: 'pdf-flow',
         component: Flow
@@ -83,6 +95,11 @@ const routes = [
         name: 'pdf-my-documents',
         component: MyDocuments
       },
+      {
+        path: 'documents-add',
+        name: 'pdf-documents-add',
+        component: DocumentAdd
+      },      
       {
         path: 'history',
         name: 'pdf-history',
@@ -97,7 +114,27 @@ const routes = [
         path: 'profile',
         name: 'pdf-profile',
         component: Profile
-      }
+      },
+      {
+        path: 'about',
+        name: 'pdf-about',
+        component: About
+      },
+      {
+        path: 'notification',
+        name: 'pdf-notification',
+        component: AllNotification
+      },
+      {
+        path: 'feedback',
+        name: 'pdf-feedback',
+        component: FeedBack
+      },
+      {
+        path: 'help',
+        name: 'pdf-help',
+        component: Help
+      },
     ]
   },
 
