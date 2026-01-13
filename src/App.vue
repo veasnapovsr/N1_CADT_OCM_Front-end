@@ -1,3 +1,8 @@
+<script setup>
+import { Toaster } from "vue-sonner"
+</script>
+
 <template>
-  <router-view />
+  <RouterView />
+  <Toaster richColors position="top-center" />
 </template>

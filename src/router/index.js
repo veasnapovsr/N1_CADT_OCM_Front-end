@@ -9,6 +9,8 @@ import SidebarLayout from '../components/SidebarLayout.vue'
 import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Attendance from '../views/Attendance.vue'
+// shedcn
+import "vue-sonner/style.css"
 
 // PDF Views
 import Flow from '../views/pdf/Flow.vue'
