@@ -2201,3 +2201,36 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
   opacity: .5;
   font-size: 13px;
 }
+.jl_filter_bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+
+  margin-bottom: 5px;
+}
+
+/* reuse legacy filter sizing */
+.jl_filter_bar .items {
+  width: 150px;
+  position: relative;
+}
+
+/* normalize controls */
+.jl_filter_bar input,
+.jl_filter_bar select,
+.jl_filter_bar .form-control {
+  width: 100% !important;
+  min-height: 35px;
+  height: 35px;
+  font-size: 15px;
+}
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+
+  --border: 214.3 31.8% 91.4%;
+}
