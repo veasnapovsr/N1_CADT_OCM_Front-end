@@ -9,7 +9,7 @@ export const documents = [
     size: '3 MB',
     status: 'approved',
     sentAt: '2024-04-04T10:00:00',
-    sentTo: 'ឯកឧត្តម ម៉ក់ រ៉េនីតា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 2,
@@ -21,7 +21,7 @@ export const documents = [
     size: '2 MB',
     status: 'pending',
     sentAt: '2024-04-05T14:30:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 3,
@@ -45,7 +45,7 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 5,
@@ -57,7 +57,7 @@ export const documents = [
     size: '4 MB',
     status: 'pending',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 6,
@@ -69,7 +69,7 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 7,
@@ -81,7 +81,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 8,
@@ -93,7 +93,7 @@ export const documents = [
     size: '4 MB',
     status: 'pending',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 9,
@@ -105,7 +105,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 10,
@@ -117,7 +117,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 11,
@@ -129,7 +129,7 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 12,
@@ -141,7 +141,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 13,
@@ -153,7 +153,7 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 14,
@@ -165,7 +165,7 @@ export const documents = [
     size: '4 MB',
     status: 'pending',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 15,
@@ -177,7 +177,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 16,
@@ -189,7 +189,7 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 17,
@@ -201,7 +201,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 18,
@@ -213,7 +213,7 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 19,
@@ -225,7 +225,7 @@ export const documents = [
     size: '4 MB',
     status: 'approved',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   },
   {
     id: 20,
@@ -237,6 +237,6 @@ export const documents = [
     size: '4 MB',
     status: 'rejected',
     sentAt: '2024-04-07T09:15:00',
-    sentTo: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា'
+    sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
   }
 ]

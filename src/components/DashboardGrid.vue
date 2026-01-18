@@ -2,18 +2,14 @@
   <section class="app_list">
 			<div class="app_inner">
 				<div class="app_sect">
-			<h1 class="h wttt frt t-lspace">សូមស្វាគមន៍មកកាន់ប្រព័ន្ធកម្មវិធី<span>ទីស្តីការគណៈរដ្ឋមន្ត្រី</span></h1>
+			<h1 class="wttt frt t-lspace">សូមស្វាគមន៍មកកាន់ប្រព័ន្ធកម្មវិធី<span class="moul">ទីស្តីការគណៈរដ្ឋមន្ត្រី</span></h1>
 			<div class="app_card_w">
 				<div class="app_card app_01">
 					<router-link to="/pdf/flow-dash"></router-link>
 					<span class="apico app1"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg></span>
 					<h3 class="t-lspace">លំហូរឯកសារ</h3>
 				</div>
-				<div class="app_card app_02">
-          <router-link to="/pdf/profile"></router-link>
-					<span class="apico app2"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 496 512"><path d="M248 104c-53 0-96 43-96 96s43 96 96 96s96-43 96-96s-43-96-96-96zm0 144c-26.5 0-48-21.5-48-48s21.5-48 48-48s48 21.5 48 48s-21.5 48-48 48zm0-240C111 8 0 119 0 256s111 248 248 248s248-111 248-248S385 8 248 8zm0 448c-49.7 0-95.1-18.3-130.1-48.4c14.9-23 40.4-38.6 69.6-39.5c20.8 6.4 40.6 9.6 60.5 9.6s39.7-3.1 60.5-9.6c29.2 1 54.7 16.5 69.6 39.5c-35 30.1-80.4 48.4-130.1 48.4zm162.7-84.1c-24.4-31.4-62.1-51.9-105.1-51.9c-10.2 0-26 9.6-57.6 9.6c-31.5 0-47.4-9.6-57.6-9.6c-42.9 0-80.6 20.5-105.1 51.9C61.9 339.2 48 299.2 48 256c0-110.3 89.7-200 200-200s200 89.7 200 200c0 43.2-13.9 83.2-37.3 115.9z" fill="currentColor"></path></svg></span>
-					<h3 class="t-lspace">ព័ត៌មានផ្ទាល់ខ្លួន</h3>
-				</div>
+				
 				<div class="app_card app_03">
           <router-link to="/pdf/flow-dash"></router-link>
 					<span class="app_lbl">មាន២ប្រជុំថ្ងៃនេះ</span>
@@ -39,7 +35,6 @@
 				</div>				
 			</div>
 		</div>
-
 		
 
 		<div class="ocm_fbw">
@@ -52,6 +47,11 @@
 					"pagination":false,
 					"arrows":false,
 					"perPage": 5,
+					"breakpoints": {
+						"1110": { "perPage": 4 },
+						"940": { "perPage": 3 },
+						"767": { "perPage": 2 }
+					},
 					"gap": "20px",
 					"direction": "ltr",
 					"autoScroll": {
@@ -85,47 +85,30 @@ import { onMounted, onUnmounted } from 'vue';
 import Splide from '@splidejs/splide';
 import { AutoScroll } from '@splidejs/splide-extension-auto-scroll';
 import '@splidejs/splide/css';
-
 let splideInstances = [];
-
 onMounted(() => {
-  // Find all elements with class 'splide'
-  const splideElements = document.querySelectorAll('.splide');
-  
+  const splideElements = document.querySelectorAll('.splide');  
   splideElements.forEach((el) => {
-    // Get options from data-splide attribute
-    const options = el.dataset.splide ? JSON.parse(el.dataset.splide) : {};
-    
-    // Find fraction element if it exists
-    const fraction = el.querySelector('.splide__fraction');
-    
-    // Create Splide instance
-    const splide = new Splide(el, options);
-    
-    // Handle fraction display if it exists
+    const options = el.dataset.splide ? JSON.parse(el.dataset.splide) : {};    
+    const fraction = el.querySelector('.splide__fraction');    
+    const splide = new Splide(el, options);    
     if (fraction) {
       splide.on('mounted move', () => {
         const total = splide.length;
         const current = splide.index + 1;
         fraction.textContent = `${current}/${total}`;
       });
-    }
-    
-    // Mount with auto-scroll extension if autoScroll option is present
+    }    
     if (options.autoScroll) {
-      // Register AutoScroll extension
       splide.mount({ AutoScroll });
     } else {
       splide.mount();
-    }
-    
-    // Store instance for cleanup
+    }    
     splideInstances.push(splide);
   });
 });
 
 onUnmounted(() => {
-  // Destroy all Splide instances on component unmount
   splideInstances.forEach((splide) => {
     if (splide) {
       splide.destroy();

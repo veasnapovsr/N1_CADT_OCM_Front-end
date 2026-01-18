@@ -130,7 +130,7 @@ body{
     --ocm-input-border: #ccc;
     --ocm-input-color: #000;
     --ocm-sm-radius: 6px;
-    --ocm-title-lspace: -0.06em;
+    --ocm-title-lspace: -0.05em;
     color: var(--ocm-color);
     letter-spacing: -0.01em;
     background-color: var(--ocm-bg);     
@@ -151,6 +151,9 @@ body.ocm_dark_skin .wp-list-table tr:hover td:not(.ocm_endeme, .bg_death){
 body.ocm_dark_skin .ts-wrapper:not(.form-control,.form-select).single .ts-control{
   background-color: var(--ocm-app-bg);
   border: 1px solid var(--ocm-input-border);
+}
+.pri-color{
+  color: var(--ocm-prim-color);
 }
 .t-lspace{
   letter-spacing: var(--ocm-title-lspace);
@@ -376,14 +379,13 @@ a{ text-decoration: none; }
 }
 .h{font-family: var(--ocm-primary-font) !important; font-weight: 700;}
 .wttt{
-    font-weight: 700;
     text-align: center;
-    font-size: 38px;    
+    font-size: 28px;
 }
 .frt{
   padding: 0px 20px;
-  font-weight: 900;
-  line-height: 1.4;
+  font-family: var(--ocm-heading-font) !important;   
+  line-height: 1.65;
 }
 .sw{
     padding: 25px 50px 0px 115px;
@@ -400,7 +402,7 @@ a{ text-decoration: none; }
     max-width: 100%;
 }
 .appppw{
-  padding-top: 55px;
+  padding-top: 60px;
 }
 .appppw .app_snav{
   position: fixed;  
@@ -604,6 +606,7 @@ body:not(.app_snav_open) .app_snav:hover{
 }
 .input-wrapper .prefix svg {
   width: 1.2em;
+  opacity: .6;
 }
 .input-wrapper .pre_end{
   pointer-events: auto;
@@ -824,22 +827,21 @@ body:not(.app_snav_open) .app_snav:hover{
 .oc_ltw{
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
 }
 .ltext{
     font-size: 14.5px;
 }
 .lapp{
-    font-weight: 600;
-    font-size: 17px;
-    line-height: 1;
-    letter-spacing: -0.05em;
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
 }
   .app_card_w{
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    margin-top: 50px;
+    margin-top: 30px;
     gap: 17px;
     flex-wrap: wrap;
   }
@@ -1759,11 +1761,6 @@ table.wp-list-table .type-ocmdb_data .column-title .row-actions .trash a:before{
   width: 1.2em;
   color: #0879fb;
 }
-.jl_tbl_c{
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
 .jl_tex_c{
   font-size: 14px;
 }
@@ -1869,8 +1866,8 @@ table.wp-list-table .type-ocmdb_data .column-title .row-actions .trash a:before{
 }
 .ocm_doc_fr .jl_tbl_w:not(:last-child){
   border-bottom: 1px solid var(--ocm-app-border);
-  padding-bottom: 5px;
-  margin-bottom: 5px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
 }
 .ocm_dcnew .ocm_docf{
   background-color: #e4ebfe;
@@ -2011,8 +2008,7 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
 .jl_tbl_c{
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  align-items: flex-start;  
 }
 
 /* Center label in 2-column dashboard (column 1) to match PDF alignment */
@@ -2695,6 +2691,9 @@ span.flatpickr-weekday.dark *,
     }
 }
 @media only screen and (max-width: 1024px) {
+  .wttt{
+    font-size: 25px;
+  }
   .sw{
     padding: 20px 20px 0px 95px;
   }
@@ -2714,8 +2713,16 @@ span.flatpickr-weekday.dark *,
     grid-row-gap: 15px;
   }
 }
-@media only screen and (max-width: 940px) {}
+@media only screen and (max-width: 940px) {
+  .ocm_fbw{
+    padding: 0px 15px 40px 15px;
+    max-width: 100%;
+  }
+}
 @media only screen and (max-width: 767px) {
+    .app_inner{
+      padding-top: 60px;
+    }
     .ocm_head{
       padding: 5px 10px;
     }
@@ -2748,7 +2755,7 @@ span.flatpickr-weekday.dark *,
       display: none;
     }    
     .wttt{
-      font-size: 23px;      
+      font-size: 20px;      
     }
     .wttt span{
       display: block;

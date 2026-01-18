@@ -61,9 +61,9 @@ function renderMonthlyChart(labels, data) {
           type: 'line',
           label: 'ចំនួនសរុប',
           data: data,
-          borderColor: '#0031c3',
+          borderColor: '#2463eb',
           backgroundColor: '#0031c3',
-          borderWidth: 2,
+          borderWidth: 1,
           pointRadius: 5,
           pointBackgroundColor: 'white',
           yAxisID: 'y'
@@ -71,7 +71,7 @@ function renderMonthlyChart(labels, data) {
         {
           label: 'ចំនួនសរុប',
           data: data,
-          backgroundColor: '#e48713',
+          backgroundColor: '#2463eb',
           maxBarThickness: 40,
           borderRadius: 5
         }

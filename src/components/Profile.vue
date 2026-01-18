@@ -2,7 +2,7 @@
 	<div class="ocm_pover_wr">
 	  <div class="ocm_profile ocm_pover" @click="togglePopover">
 		<span class="avtar"><img :src="user.avatar_url" /></span>
-		<span>{{ user.countesy.name }}<br><b class="t-lspace">{{ user.lastname }} {{ user.firstname }}</b></span>
+		<span>{{ user.countesy.name }}<br><b class="moul fs-90">{{ user.lastname }} {{ user.firstname }}</b></span>
 	  </div>
 	  <div class="pop_content">
 		<ul class="pinfo_list">

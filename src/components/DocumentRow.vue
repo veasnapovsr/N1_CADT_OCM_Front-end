@@ -14,13 +14,13 @@
           {{ doc.size }}
         </span>
 
-        <span class="jl_tbl_c">
+        <span class="jl_tbl_c gap-0.5">
           <span class="tb_n1 link bold ellip-2"
               :title="doc.title">
             {{ doc.title }}
           </span>
-          <span class="tb_n1 fs-95">
-            លិខិតលេខ: {{ doc.code }}
+          <span class="tb_n1 fs-90">
+            <span>លិខិតលេខ: {{ doc.code }}</span>            
           </span>
         </span>
       </span>
@@ -32,8 +32,9 @@
         <span class="jl_tbl_img">
           <img :src="doc.creatorAvatar" alt="creator" />
         </span>
-        <span class="jl_tbl_c bold">
-          {{ doc.creator }}
+        <span class="jl_tbl_c">
+          <span class="tb_n1 bold fs-95">{{ doc.creator }}</span>
+          <span class="tb_n1 fs-90">អនុរដ្ឋលេខាធិការ</span>
         </span>
       </span>
     </td>
@@ -45,7 +46,7 @@
 
     <!-- SENT TO + TIME AGO -->
     <td>
-      {{ sentAgo }} ឯកសារដល់:<br />
+      {{ sentAgo }}ឯកសារដល់<br />
       <span class="bold">{{ doc.sentTo }}</span><br />
       <small class="fs-95 text-muted">        
       </small>
