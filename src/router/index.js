@@ -16,6 +16,7 @@ import "vue-sonner/style.css"
 import Flow from '../views/pdf/Flow.vue'
 import FlowDashboard from '../views/pdf/FlowDashboard.vue'
 import MyDocuments from '../views/pdf/MyDocuments.vue'
+import DocumentAddAdministration from '../views/pdf/DocumentAddAdministration.vue'
 import DocumentAdd from '../views/pdf/DocumentAdd.vue'
 import DocumentEdit from '../views/pdf/DocumentEdit.vue'
 import DocumentSuccess from '../views/pdf/DocumentSuccess.vue'
@@ -101,10 +102,15 @@ const routes = [
         component: MyDocuments
       },
       {
+        path: 'documents-add2',
+        name: 'pdf-documents-add2',
+        component: DocumentAddAdministration
+      },
+      {
         path: 'documents-add',
         name: 'pdf-documents-add',
         component: DocumentAdd
-      },      
+      },
       {
         path: 'documents-edit',
         name: 'pdf-documents-edit',

@@ -5,7 +5,7 @@
   <div class="sw">
 				<div class="app_content">
 				<div class="ocm_cwr">
-					<h2 class="h wttt ocm_ptitle t-lspace">កែប្រែឯកសារ</h2>
+					<h2 class="h wttt ocm_ptitle t-lspace">ខុទ្ទកាល័យ កែប្រែឯកសារ</h2>
 				</div>
     <div class="ocm_card_wr">    
     <div v-if="!submitted">

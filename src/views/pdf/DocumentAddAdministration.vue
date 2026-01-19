@@ -5,7 +5,7 @@
   <div class="sw">
 				<div class="app_content">
 				<div class="ocm_cwr">
-					<h2 class="h wttt ocm_ptitle t-lspace">ខុទ្ទកាល័យ បង្កើតឯកសារ</h2>
+					<h2 class="h wttt ocm_ptitle t-lspace">រដ្ឋបាល បង្កើតឯកសារ</h2>
 				</div>
     <div class="ocm_card_wr">    
     <div v-if="!submitted">

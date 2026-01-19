@@ -2231,7 +2231,7 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
   -webkit-line-clamp: 2;
   word-break: break-word;
   overflow-wrap: break-word;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
 }
 /* ocm grid */
 .ocmopt-col{
