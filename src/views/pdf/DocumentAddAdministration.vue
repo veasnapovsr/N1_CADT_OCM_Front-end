@@ -12,64 +12,40 @@
     <form @submit.prevent="submitForm">
       <div class="ocm_card_content">
       <div class="ocmopt-col cols1 mb-15">
-							<div class="ocmopt-meta">
-								<div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">កម្មវត្ថុ</label></div>
-								<div class="ocmopt-meta-content ocm_meta_check">
-									<textarea name="ocm_name" id="ocm_name" class="form-control" cols="60" rows="5"></textarea>
-								</div>
-							</div>
-						</div>
-						<div class="ocmopt-col cols3 mb-20">
-							<div class="ocmopt-meta">
-								<div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">លិខិតលេខ</label></div>
-								<div class="ocmopt-meta-content">
-								<input id="dob" type="text" name="dob" autocomplete="off" class="form-control">
-								</div>
-							</div>
-
-							<div class="ocmopt-meta">
-								<div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">កាលបរិច្ឆេទ</label></div>
-								<div class="ocmopt-meta-content input-wrapper inpdate">
-                  <FlatPickr
-                  v-model="startDate"
-                  placeholder="កាលបរិច្ឆេទ"
-                  @input="handleInput"
-                  :value="modelValue"
-                  :config="{
-                    dateFormat: 'd-m-Y',
-                    altInput: true,
-                    altFormat: 'd-m-Y',
-                    allowInput: true,
-                    minDate: new Date()
-                  }"
-                />
-                <div class="prefix pre_end"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="3 2 18 20"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="currentColor"></path></svg></div>
-                </div>
-							</div>
-				
-
-
-              <div class="ocmopt-meta">
-								<div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">ប្រភេទឯកសារ</label></div>
-								<div class="ocmopt-meta-content formsel">
-									<InputSelect
-										v-model="form.documentType"
-										:options="documentTypes"
-										track-by="value"
-										label="label"
-										placeholder="ប្រភេទឯកសារ"
-										:multiple="false"
-										:clear-on-select="false"
-									/>
-								</div>
-							</div>	
-
-
-
-
-              
-
-						</div>      
+        <div class="ocmopt-meta">
+          <div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">កម្មវត្ថុ</label></div>
+          <div class="ocmopt-meta-content ocm_meta_check">
+            <textarea name="ocm_name" id="ocm_name" class="form-control" cols="60" rows="5"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="ocmopt-col cols2 mb-20" style="display: flex; gap: 20px;">
+        <div class="ocmopt-meta" style="flex: 1;">
+          <div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">លិខិតលេខ</label></div>
+          <div class="ocmopt-meta-content">
+            <input id="dob" type="text" name="dob" autocomplete="off" class="form-control">
+          </div>
+        </div>
+        <div class="ocmopt-meta" style="flex: 1;">
+          <div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">កាលបរិច្ឆេទ</label></div>
+          <div class="ocmopt-meta-content input-wrapper inpdate">
+            <FlatPickr
+              v-model="startDate"
+              placeholder="កាលបរិច្ឆេទ"
+              @input="handleInput"
+              :value="modelValue"
+              :config="{
+                dateFormat: 'd-m-Y',
+                altInput: true,
+                altFormat: 'd-m-Y',
+                allowInput: true,
+                minDate: new Date()
+              }"
+            />
+            <div class="prefix pre_end"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="3 2 18 20"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="currentColor"></path></svg></div>
+          </div>
+        </div>
+      </div>
       
       <div 
         class="drop-zone mb-20"
