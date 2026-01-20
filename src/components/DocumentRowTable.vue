@@ -1,7 +1,7 @@
 <template>
   <tr>
     <!-- INDEX -->
-    <td>{{ index + 1 }}</td>
+    <td>{{ displayNumber }}</td>
 
     <!-- DOCUMENT INFO -->
     <td>
@@ -66,30 +66,47 @@ const props = defineProps({
   index: {
     type: Number,
     required: true
+  },
+  displayIndex: {
+    type: Number,
+    default: null
   }
+})
+
+const displayNumber = computed(() => {
+  // Prefer the provided displayIndex (already page-aware) otherwise fallback to local index
+  return props.displayIndex ?? props.index + 1
 })
 
 // Status class based on the status
 const statusClass = computed(() => {
-  if (props.doc.status === 'approved') {
-    return 'status-approved'; // Green for approved
-  } else if (props.doc.status === 'Progressing') {
-    return 'status-progressing'; // Yellow for processing
-  } else if (props.doc.status === 'rejected') {
-    return 'status-rejected'; // Red for rejected
+  const status = (props.doc.status || '').toString().toLowerCase()
+
+  if (status === 'approved') {
+    return 'status-approved' // Green for approved
+  } else if (status === 'progressing') {
+    return 'status-progressing' // Yellow for processing
+  } else if (status === 'rejected') {
+    return 'status-rejected' // Red for rejected
+  } else if (status === 'pending') {
+    return 'status-pending' // Grey for pending/unknown
   }
-  return '';
+  return ''
 })
 
 const statusText = computed(() => {
-  if (props.doc.status === 'approved') {
-    return 'អនុម័តរួច';
-  } else if (props.doc.status === 'Progressing') {
-    return 'ដំណើរការ';
-  } else if (props.doc.status === 'rejected') {
-    return 'មិនយល់ព្រម';
+  const status = (props.doc.status || '').toString().toLowerCase()
+
+  if (status === 'approved') {
+    return 'អនុម័តរួច'
+  } else if (status === 'progressing') {
+    return 'ដំណើរការ'
+  } else if (status === 'rejected') {
+    return 'មិនយល់ព្រម'
+  } else if (status === 'pending') {
+    return 'កំពុងរង់ចាំ'
   }
-  return '';
+  return ''
 })
 </script>
 
@@ -114,5 +131,9 @@ const statusText = computed(() => {
 
 .status-rejected {
   background-color: red; /* Red for rejected */
+}
+
+.status-pending {
+  background-color: #6b7280; /* Neutral gray for pending/unknown */
 }
 </style>
