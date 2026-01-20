@@ -35,7 +35,7 @@
 				</div>				
 			</div>
 		</div>
-		
+
 
 		<div class="ocm_fbw">
 				<div class="ocm_sect t-lspace"><h3>ព័ត៌មានទូទៅ</h3>
@@ -85,6 +85,8 @@ import { onMounted, onUnmounted } from 'vue';
 import Splide from '@splidejs/splide';
 import { AutoScroll } from '@splidejs/splide-extension-auto-scroll';
 import '@splidejs/splide/css';
+
+
 let splideInstances = [];
 onMounted(() => {
   const splideElements = document.querySelectorAll('.splide');  
