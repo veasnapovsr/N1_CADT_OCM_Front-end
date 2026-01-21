@@ -6,9 +6,10 @@
     <div class="flex flex-col gap-3">
 
       <h1 class="text-2xl ">បណ្ណសារឯកសារ</h1>
-      <h3 class=" bold">folder</h3>
-      <FolderCompo/>
-      <DocumentTable/>
+      <!-- <h3 class=" bold">folder</h3> -->
+      <CountNumber/>
+      <!-- <FolderCompo/>
+      <DocumentTable/> -->
 
     </div>
   <Footer />
@@ -22,4 +23,5 @@ import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
 import FolderCompo from '@/components/History/FolderCompo.vue';
 import DocumentTable from '@/components/History/DocumentTable.vue';
+import CountNumber from '@/components/CountNumber.vue';
 </script>

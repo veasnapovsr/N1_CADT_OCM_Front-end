@@ -29,6 +29,7 @@ import AllNotification from '../views/pdf/AllNotification.vue'
 import FeedBack from '../views/pdf/FeedBack.vue'
 import Help from '../views/pdf/Help.vue'
 import NotFound from '../views/pdf/NotFound.vue'
+import Count from '../components/CountNumber.vue'
 
 
 
@@ -163,6 +164,11 @@ const routes = [
         name: 'pdf-help',
         component: Help
       },
+      {
+        path: 'count',
+        name: 'pdf-count',
+        component: Count
+      }
     ]
   },
 
