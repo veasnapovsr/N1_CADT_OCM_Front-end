@@ -30,6 +30,7 @@ import FeedBack from '../views/pdf/FeedBack.vue'
 import Help from '../views/pdf/Help.vue'
 import NotFound from '../views/pdf/NotFound.vue'
 import Count from '../components/CountNumber.vue'
+import FlowDashboard2 from '@/views/pdf/FlowDashboard2.vue'
 
 
 
@@ -93,6 +94,11 @@ const routes = [
         path: 'flow-dash',
         name: 'pdf-flow-dash',
         component: FlowDashboard
+      },
+      {
+        path: 'flow-dash2',
+        name: 'pdf-flow-dash2',
+        component: FlowDashboard2
       },
       {
         path: 'flow',
