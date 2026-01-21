@@ -1,28 +1,117 @@
 <template>
   <Header title="លំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
   <section class="appppw">
-    <Aside />
-    <div class="sw">
-      <div class="flex flex-col gap-4">
-
-        <h1 class="text-2xl">បណ្ណសារឯកសារ</h1>
-
-        <CountNumber />
-
-        <!-- Log activity chart -->
-        <LogActivityLineChart />
-
-        <!-- Optional -->
-        <!-- <FolderCompo /> -->
-        <!-- <DocumentTable /> -->
-
+  <Aside />
+  <div class="sw">
+    <div class="app_content">
+      <div class="ocm_cwr">
+        <h2 class="h wttt t-lspace">Logs ប្រព័ន្ធគ្រប់គ្រង</h2>
       </div>
-<<<<<<< HEAD
-
-      <Footer />
-    </div>
-  </section>
-=======
+      
+      <!-- card content -->
+       <!-- Card Content -->
+       
+				<div class="ocm_dashboard_splits">
+					<div>
+						<div class="ocm_bfw ocm_stat">
+					<div class="ocm_caw noneh status_wait">
+						<div class="ocm_card_body">
+							<div class="ocm_icardw">
+							<h5 class="ocm_card_value">{{ formatKhmerNumber(pendingCount) }}</h5>
+							<div class="ocm_icard">
+								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
+							</div>			
+							</div>
+							<p class="ocm_card_title">Log ឯកសារទាំងអស់</p>
+						</div>
+					</div>
+					<div class="ocm_caw noneh status_accept">
+						<div class="ocm_card_body">
+						<div class="ocm_icardw">	
+						<h5 class="ocm_card_value">{{ formatKhmerNumber(approvedCount) }}</h5>
+						<div class="ocm_icard">
+							<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
+						</div>			
+						</div>
+							<p class="ocm_card_title">ឯកសារបានបង្កើត</p>
+						</div>
+					</div>
+					<div class="ocm_caw noneh status_all">
+						<div class="ocm_card_body">
+							<div class="ocm_icardw">
+							<h5 class="ocm_card_value">{{ formatKhmerNumber(totalCount) }}</h5>
+							<div class="ocm_icard">
+								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
+							</div>			
+							</div>
+							<p class="ocm_card_title">ឯកសារមិនយល់ព្រម</p>
+						</div>
+					</div>
+					<div class="ocm_caw noneh status_draft">
+						<div class="ocm_card_body">
+							<div class="ocm_icardw">
+							<h5 class="ocm_card_value">{{ formatKhmerNumber(draftCount) }}</h5>
+							<div class="ocm_icard">
+								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
+							</div>			
+							</div>
+							<p class="ocm_card_title">មតិយោបល់</p>
+						</div>
+					</div>
+					<div class="ocm_caw noneh status_decline">
+						<div class="ocm_card_body">
+						<div class="ocm_icardw">
+						<h5 class="ocm_card_value">{{ formatKhmerNumber(rejectedCount) }}</h5>
+							<div class="ocm_icard">
+								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
+							</div>			
+							</div>
+							<p class="ocm_card_title">ឯកសារបានអនុម័ត</p>
+						</div>
+					</div>
+						</div>
+						</div>
+						</div>
+      <!-- Filter Section -->
+      <div class="ocm_filter_w d-flex align-items-center gap-3 flex-wrap mb-10">
+        <div class="items">
+          <input 
+            type="text" 
+            v-model="filters.user" 
+            class="form-control" 
+            placeholder="ស្វែងរកតាមអ្នកប្រើប្រាស់"
+          />
+        </div>
+        <div class="items">
+          <input 
+            type="text" 
+            v-model="filters.document" 
+            class="form-control" 
+            placeholder="ស្វែងរកតាមឯកសារ"
+          />
+        </div>
+        <div class="items">
+          <select v-model="filters.actionType" class="form-control">
+            <option value="">ទាំងអស់ - Action Type</option>
+            <option value="comment">Comment</option>
+            <option value="reject">Reject</option>
+            <option value="approve">Approve</option>
+            <option value="sent">Sent</option>
+            <option value="created">Created</option>
+          </select>
+        </div>
+        <div class="items">
+          <input 
+            type="date" 
+            v-model="filters.date" 
+            class="form-control" 
+            placeholder="ថ្ងៃ"
+          />
+        </div>
+        <button @click="applyFilters" class="button ocm_btn_ac button-primary t-lspace">
+          ស្វែងរក
+        </button>
+      </div>
  
       <!-- Logs Timeline -->
       <!-- Most Active Users: Top 10 -->
@@ -156,21 +245,9 @@
   
   <Footer />
 </section>
->>>>>>> 98e1ab3 (Top10_USers_SystemLogs.vue)
 </template>
 
-
 <script setup>
-<<<<<<< HEAD
-import Header from '@/components/Header.vue'
-import Aside from '@/components/Aside.vue'
-import Footer from '@/components/Footer.vue'
-import FolderCompo from '@/components/History/FolderCompo.vue';
-import DocumentTable from '@/components/History/DocumentTable.vue';
-import CountNumber from '@/components/CountNumber.vue';
-import LogActivityLineChart from '@/components/LogActivityLineChart.vue'
-</script>
-=======
 
 ///To compute the top 10 Users
 import { ref, computed, onMounted } from 'vue'
@@ -714,4 +791,3 @@ const topActiveUsers = computed(() => {
 }
 
 </style>
->>>>>>> 98e1ab3 (Top10_USers_SystemLogs.vue)
