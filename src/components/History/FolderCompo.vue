@@ -30,22 +30,24 @@
   
   <style scoped>
   .folder-card {
-    background: #e5e7eb; /* light gray background */
+    background: var(--ocm-app-bg); /* themed background */
     border-radius: 16px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 4px;
+    border: 1px solid var(--ocm-app-border);
+    color: var(--ocm-color);
   }
   
   .folder-card:hover {
-    background: #d1d5db; /* light gray on hover */
+    background: var(--ocm-active-bg);
   }
   
   .folder-icon {
     width: 56px;
     height: 56px;
-    background: #fcd34d; /* yellow background for the icon */
+    background: var(--ocm-brand-color); /* brand */
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -55,43 +57,23 @@
   .folder-icon-svg {
     width: 28px;
     height: 28px;
-    color: #4b5563; /* gray-600 color for the icon */
+    color: #000; /* brand icon contrast */
   }
   
   .folder-title {
     font-size: 16px;
-    color: #111827; /* gray-900 for dark text */
+    color: var(--ocm-color);
+    font-weight: 700;
   }
   
   .folder-total {
     font-size: 14px;
-    color: #6b7280; /* gray-500 for secondary text */
+    opacity: 0.75;
   }
   
-  /* Dark mode overrides when .dark is present on html/body */
-  :global(.dark) .folder-card {
-    background: #1f2937; /* dark gray background */
-    color: #f3f4f6; /* light text for dark mode */
-  }
-  
-  :global(.dark) .folder-card:hover {
-    background: #374151; /* darker gray on hover */
-  }
-  
-  :global(.dark) .folder-icon {
-    background: #374151; /* dark background for the icon */
-  }
-  
-  :global(.dark) .folder-icon-svg {
-    color: #e5e7eb; /* light gray for the icon in dark mode */
-  }
-  
-  :global(.dark) .folder-title {
-    color: #f3f4f6; /* light text for the title */
-  }
-  
-  :global(.dark) .folder-total {
-    color: #9ca3af; /* medium gray for the total text */
+  /* Dark mode: this app uses body.ocm_dark_skin (not `.dark`) */
+  :global(body.ocm_dark_skin) .folder-icon-svg {
+    color: #000; /* keep strong contrast on brand color */
   }
   </style>
   
