@@ -31,6 +31,7 @@ import Help from '../views/pdf/Help.vue'
 import NotFound from '../views/pdf/NotFound.vue'
 import Count from '../components/CountNumber.vue'
 import FlowDashboard2 from '@/views/pdf/FlowDashboard2.vue'
+import Online from '@/components/OnlineUserList.vue'
 
 
 
@@ -174,7 +175,12 @@ const routes = [
         path: 'count',
         name: 'pdf-count',
         component: Count
-      }
+      },
+      {
+        path: 'online',
+        name: 'pdf-online',
+        component: Online
+      },
     ]
   },
 
