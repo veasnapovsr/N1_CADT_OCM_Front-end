@@ -1,73 +1,80 @@
 <template>
-  <section class="count-section mb-30">
-    <header class="section-heading">
-    </header>
+  <section class="count-section ">
+    <div class="ocm_dashboard_splits">
+      <div>
+        <div class="ocm_bfw ocm_stat">
 
-    <div class="card-grid">
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-icon icon-blue">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </span>
-          <span class="stat-label">ចំនួននាក់ចូលប្រើប្រាស់ប្រព័ន្ធ</span>
-        </div>
-        <p class="stat-value">{{ formatKhmerNumber(formatNumber(views)) }}</p>
-      </article>
+          <!-- Views -->
+          <div class="ocm_caw noneh status_wait">
+            <div class="ocm_card_body">
+              <div class="ocm_icardw">
+                <h5 class="ocm_card_value">
+                  {{ formatKhmerNumber(formatNumber(views)) }}
+                </h5>
+                <div class="ocm_icard">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       viewBox="4 2 16 20">
+                    <g fill="none">
+                      <path fill="currentColor"
+                        d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+              <p class="ocm_card_title">
+                ចំនួននាក់ចូលប្រើប្រាស់ប្រព័ន្ធ
+              </p>
+            </div>
+          </div>
 
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-icon icon-green">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 3v12" />
-              <path d="m7 12 5 5 5-5" />
-              <path d="M5 21h14" />
-            </svg>
-          </span>
-          <span class="stat-label">ចំនួននាក់ចូលមើលឯកសារ</span>
-        </div>
-        <p class="stat-value">{{ formatKhmerNumber(formatNumber(downloads)) }}</p>
-      </article>
+          <!-- Downloads -->
+          <div class="ocm_caw noneh status_accept">
+            <div class="ocm_card_body">
+              <div class="ocm_icardw">
+                <h5 class="ocm_card_value">
+                  {{ formatKhmerNumber(formatNumber(downloads)) }}
+                </h5>
+                <div class="ocm_icard">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       viewBox="4 2 16 20">
+                    <g fill="none">
+                      <path fill="currentColor"
+                        d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+              <p class="ocm_card_title">
+                ចំនួននាក់ចូលមើលឯកសារ
+              </p>
+            </div>
+          </div>
 
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-icon icon-purple">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M13 20h8" />
-              <path d="m13 4 7 7-7 7-7-7 7-7Z" />
-              <path d="m5 12 7 7" />
-            </svg>
-          </span>
-          <span class="stat-label">ចំនួនមតិយោបល់</span>
+          <!-- Edits -->
+          <div class="ocm_caw noneh status_all">
+            <div class="ocm_card_body">
+              <div class="ocm_icardw">
+                <h5 class="ocm_card_value">
+                  {{ formatKhmerNumber(formatNumber(edits)) }}
+                </h5>
+                <div class="ocm_icard">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       viewBox="4 2 16 20">
+                    <g fill="none">
+                      <path fill="currentColor"
+                        d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+              <p class="ocm_card_title">
+                ចំនួនមតិយោបល់
+              </p>
+            </div>
+          </div>
+
         </div>
-        <p class="stat-value">{{ formatKhmerNumber(formatNumber(edits)) }}</p>
-      </article>
+      </div>
     </div>
   </section>
 </template>
@@ -104,105 +111,15 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-
-.section-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-.section-heading h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ocm-prim-color);
-}
-
-.card-grid {
+<style scoped> 
+.ocm_stat {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
 }
 
-.stat-card {
-  background: var(--ocm-app-bg);
-  border: 1px solid var(--ocm-app-border);
-  border-radius: 6px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--ocm-sec-color);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-}
-
-.stat-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--ocm-color);
-  opacity: 0.85;
-}
-
-.stat-value {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--ocm-prim-color);
-}
-
-.stat-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: currentColor;
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.stat-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.icon-blue {
-  background: rgba(71, 85, 255, 0.14);
-  color: #4755ff;
-}
-
-.icon-green {
-  background: rgba(16, 185, 129, 0.14);
-  color: #10b981;
-}
-
-.icon-purple {
-  background: rgba(168, 85, 247, 0.16);
-  color: #a855f7;
-}
-
-body.ocm_dark_skin .stat-icon {
-  background: rgba(255, 255, 255, 0.06);
+.ocm_caw {
+  width: 100%;
 }
 </style>

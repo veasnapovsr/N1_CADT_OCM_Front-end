@@ -97,7 +97,7 @@ const chartOptions = {
         if (!tooltipEl) {
           tooltipEl = document.createElement('div');
           tooltipEl.id = 'chartjs-tooltip-red';
-          tooltipEl.className = 'absolute bg-gray-900 text-white p-3 rounded-xl shadow-2xl pointer-events-none transition-opacity duration-200 z-50 border border-gray-700';
+          tooltipEl.className = 'absolute   p-3 rounded-xl shadow-2xl pointer-events-none transition-opacity duration-200 z-50 border border-gray-700';
           document.body.appendChild(tooltipEl);
         }
 
@@ -118,8 +118,8 @@ const chartOptions = {
               </div>
               <div style="font-family: 'Kantumruy Pro', sans-serif">
                 <div class="font-bold text-sm" style="color: ${color}">${dataPoint.user}</div>
-                <div class="text-xs text-gray-300">${dataPoint.action}</div>
-                <div class="text-[10px] mt-1 text-gray-500">
+                <div class="text-xs ">${dataPoint.action}</div>
+                <div class="text-[10px] mt-1 ">
                   ម៉ោង ${new Date(dataPoint.x).toLocaleTimeString('km-KH', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
@@ -138,30 +138,25 @@ const chartOptions = {
 </script>
 
 <template>
-  <div class="bg-white border border-gray-200 rounded-md p-6 mb-30 font-khmer">
+  <div>
+    <h3 class="text-xl font-bold " >តារាងសកម្មភាព</h3>
+    <p class="text-sm  mt-2 mb-10">{{ todayKhmer }}</p>
+  </div>
+  <div class=" border border-gray-200 rounded-md p-6 mb-30 font-khmer">
     <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
-      <div>
-        <h3 class="text-xl font-bold text-gray-900" style="font-family: 'Kantumruy Pro'">តារាងសកម្មភាព</h3>
-        <p class="text-sm text-gray-500 mt-2 mb-10">{{ todayKhmer }}</p>
-      </div>
       
       
     </div>
 
     <!-- Chart Body -->
-    <div class="w-full h-80 relative bg-slate-50/50 rounded-md border border-slate-100 p-4">
+    <div class="w-full h-80 relative  rounded-md border border-slate-100 p-4">
       <Line :data="chartData" :options="chartOptions" />
     </div>
   </div>
 </template>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&display=swap');
-
-.font-khmer {
-  font-family: 'Kantumruy Pro', sans-serif;
-}
 
 #chartjs-tooltip-red {
   transform: translate(-50%, -100%);

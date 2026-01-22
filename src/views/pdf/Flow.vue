@@ -1,5 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+
 
 /* =======================
    LAYOUT COMPONENTS
@@ -32,6 +34,9 @@ import DocumentSentToFilter from '@/components/flow/DocumentSentToFilter.vue'
 import { flowStats } from '@/data/Flowstatuscheck'
 import { documents } from '@/data/documents'
 
+const route = useRoute()
+
+
 /* =======================
    VIEW MODE
 ======================= */
@@ -43,7 +48,13 @@ const viewMode = ref('row') // row | grid
 const selectedDate = ref('')
 const selectedAuthor = ref('')
 const selectedName = ref('')
-const selectedStatus = ref('')
+const selectedStatus = ref(route.query.status || '')
+watch(
+  () => route.query.status,
+  (status) => {
+    selectedStatus.value = status || ''
+  }
+)
 const selectedSentTo = ref('')
 
 /* =======================
