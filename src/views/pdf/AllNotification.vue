@@ -67,34 +67,37 @@ const totalRecords = ref(0);
 
 // Fetch mission leave data based on user and pagination
 const fetchData = async () => {
-    try {
-        
-        const url = `${API_BASE_URL}/all-notifications?page=${currentPage.value}&per_page=${perPage}&user_id=${userId}`;
-        const response = await fetch(url);
-        const result = await response.json();
-		// console.log("Data:", result);
+    // API disabled - not in use yet
+    // try {
+    //     const url = `${API_BASE_URL}/all-notifications?page=${currentPage.value}&per_page=${perPage}&user_id=${userId}`;
+    //     const response = await fetch(url);
+    //     const result = await response.json();
+    //     // console.log("Data:", result);
 
-        if (!result.data || !Array.isArray(result.data)) {
-            console.error("Error: Expected an array, but got:", result.data);
-            return;
-        }
+    //     if (!result.data || !Array.isArray(result.data)) {
+    //         console.error("Error: Expected an array, but got:", result.data);
+    //         return;
+    //     }
 
-        const formattedData = result.data.map(row => ({
-            ...row,
-            receivers: row.receivers 
-                ? row.receivers.split("||").map(receiver => {
-                    const [name, img, task] = receiver.split("|");
-                    return { name: name?.trim() || '', img: img?.trim() || '', task: task?.trim() || '' };
-                }) 
-                : []
-        }));
+    //     const formattedData = result.data.map(row => ({
+    //         ...row,
+    //         receivers: row.receivers 
+    //             ? row.receivers.split("||").map(receiver => {
+    //                 const [name, img, task] = receiver.split("|");
+    //                 return { name: name?.trim() || '', img: img?.trim() || '', task: task?.trim() || '' };
+    //             }) 
+    //             : []
+    //     }));
 
-        data.value = formattedData ?? [];
-        totalRecords.value = result.total_records;
-        
-    } catch (error) {
-        console.error("Error fetching data:", error);
-    }
+    //     data.value = formattedData ?? [];
+    //     totalRecords.value = result.total_records;
+    // } catch (error) {
+    //     console.error("Error fetching data:", error);
+    // }
+    
+    // Return empty data
+    data.value = [];
+    totalRecords.value = 0;
 };
 
 

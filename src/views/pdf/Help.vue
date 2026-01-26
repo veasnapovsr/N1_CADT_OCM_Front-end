@@ -144,31 +144,34 @@ export default {
     async submitForm() {
       this.isSubmitting = true; // Disable the button
 
-      const formData = new FormData();
-      for (const file of this.selectedFiles) {
-        formData.append("files[]", file);
-      }
+      // API disabled - not in use yet
+      // const formData = new FormData();
+      // for (const file of this.selectedFiles) {
+      //   formData.append("files[]", file);
+      // }
 
-      // Upload images via API
-      const uploadResponse = await fetch(`${API_BASE_URL}/upload-gallery`, {
-        method: "POST",
-        body: formData,
-      });
+      // // Upload images via API
+      // const uploadResponse = await fetch(`${API_BASE_URL}/upload-gallery`, {
+      //   method: "POST",
+      //   body: formData,
+      // });
 
-      const uploadResult = await uploadResponse.json();
-      this.form.gallery = uploadResult.urls; // Store returned URLs
+      // const uploadResult = await uploadResponse.json();
+      // this.form.gallery = uploadResult.urls; // Store returned URLs
 
-      // Submit feedback
-      const feedbackResponse = await fetch(`${API_BASE_URL}/support`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(this.form),
-      });
+      // // Submit feedback
+      // const feedbackResponse = await fetch(`${API_BASE_URL}/support`, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(this.form),
+      // });
 
-      if (feedbackResponse.ok) {
-        this.submitted = true; // Hide form and show success message
-      }
+      // if (feedbackResponse.ok) {
+      //   this.submitted = true; // Hide form and show success message
+      // }
 
+      // Simulate success for UI
+      this.submitted = true;
       this.isSubmitting = false; // Re-enable button (if needed)
     },
   },

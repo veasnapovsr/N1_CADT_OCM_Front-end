@@ -1,3 +1,5 @@
+.cursorignore
+.hintrc
 # Logs
 logs
 *.log

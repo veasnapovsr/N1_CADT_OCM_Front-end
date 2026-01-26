@@ -29,7 +29,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import axios from "axios";
+// import axios from "axios"; // API disabled - not in use yet
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -72,32 +72,38 @@ const handleClickOutside = (event) => {
 
 // Fetch notifications
 const fetchNotifications = async () => {
-  try {
-    const response = await axios.get(`http://localhost/content_egg/wp-json/api/user-notifications/${userId}`);
-    notifications.value = response.data;
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-  }
+  // API disabled - not in use yet
+  // try {
+  //   const response = await axios.get(`http://localhost/content_egg/wp-json/api/user-notifications/${userId}`);
+  //   notifications.value = response.data;
+  // } catch (error) {
+  //   console.error("Error fetching notifications:", error);
+  // }
+  notifications.value = []; // Return empty array
 };
 
 // Mark all as read
 const markAllAsRead = async () => {
-  try {
-    await axios.post(`http://localhost/content_egg/wp-json/api/mark-all-read/${userId}`);
-    fetchNotifications(); // Refresh notifications after marking as read
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-  }
+  // API disabled - not in use yet
+  // try {
+  //   await axios.post(`http://localhost/content_egg/wp-json/api/mark-all-read/${userId}`);
+  //   fetchNotifications(); // Refresh notifications after marking as read
+  // } catch (error) {
+  //   console.error("Error marking all notifications as read:", error);
+  // }
+  fetchNotifications(); // Refresh notifications after marking as read
 };
 
 // Mark notification as read & navigate
 const markAsRead = async (noti_id) => {
-  try {
-    await axios.post(`http://localhost/content_egg/wp-json/api/update-notification/${noti_id}`);
-    router.push("/allnotification"); // Navigate to AllNotification page
-  } catch (error) {
-    console.error("Error updating notification:", error);
-  }
+  // API disabled - not in use yet
+  // try {
+  //   await axios.post(`http://localhost/content_egg/wp-json/api/update-notification/${noti_id}`);
+  //   router.push("/allnotification"); // Navigate to AllNotification page
+  // } catch (error) {
+  //   console.error("Error updating notification:", error);
+  // }
+  router.push("/allnotification"); // Navigate to AllNotification page
 };
 
 // Listen for clicks outside

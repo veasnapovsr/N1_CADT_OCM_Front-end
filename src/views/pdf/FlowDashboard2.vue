@@ -18,6 +18,9 @@ const router = useRouter()
 const goToDetail = () => {
   router.push({ name: 'pdf-documents-detail' })
 }
+const goToAll = () => {
+  router.push({ name: 'pdf-flow' })
+}
 
 // ---------------- Pending files logic ----------------
 const timeAgo = (isoString) => {
@@ -190,7 +193,7 @@ const ministries = [
   <div class="ocm_card_body">
     <h2 class="h card_tt t-lspace w-full flex justify-between items-center">
       <span>ឯកសារត្រូវពិនិត្យ (១០)</span>
-      <span class="ocm_lbl">បង្ហាញទាំងអស់</span>
+      <span class="ocm_lbl" @click="goToAll">បង្ហាញទាំងអស់</span>
     </h2>
 
     <span class="jl_tbl_w cursor-pointer ocm_dcreject" @click="goToDetail">

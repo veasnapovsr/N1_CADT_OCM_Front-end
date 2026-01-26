@@ -120,7 +120,7 @@ export default {
          * Start
          */
         auth.login( 
-          `${import.meta.env.VITE_API_SERVER}/authentication/login`,
+          "https://hrapi.ocm.gov.kh/api/authcenter/authentication/login" , 
           {
             email: email.value,
             password: password.value

@@ -381,7 +381,7 @@ a{ text-decoration: none; }
 .h{font-family: var(--ocm-primary-font) !important; font-weight: 700;}
 .wttt{
     text-align: center;
-    font-size: 28px;
+    font-size: 25px;
 }
 .frt{
   padding: 0px 20px;
@@ -842,7 +842,7 @@ body:not(.app_snav_open) .app_snav:hover{
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    margin-top: 30px;
+    margin-top: 15px;
     gap: 17px;
     flex-wrap: wrap;
   }
@@ -851,10 +851,10 @@ body:not(.app_snav_open) .app_snav:hover{
     position: relative;
     border: 1px solid var(--ocm-app-border);
     background: var(--ocm-app-bg);
-    height: 140px;
-    width: 165px;
+    height: 125px;
+    width: 140px;
     text-align: center;
-    border-radius: 10px;
+    border-radius: 7px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -902,22 +902,23 @@ body:not(.app_snav_open) .app_snav:hover{
     font-size: 11px;
     background: #ffeb25;
     color: #000000;
-    border-radius: 8px;
+    border-radius: 6px;
+    font-weight: 500;
   }
   .apico{
     padding: 0px 10px;
-    margin-bottom: 7px;
+    margin-bottom: 5px;
     background: #ffffff;
-    border-radius: 15px;
-    width: 50px;
-    height: 50px;
+    border-radius: 7px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .apico svg{
-    width: 25px;
-    height: 25px;
+    width: 20px;
+    height: 20px;
     color: #fff;
     fill: currentColor;
   }
@@ -1020,8 +1021,8 @@ body:not(.app_snav_open) .app_snav:hover{
     height: auto;
   }
   .app_inner{
-    padding-top: 90px;
-    height: calc(100vh - 60px);
+    padding-top: 85px;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1030,6 +1031,7 @@ body:not(.app_snav_open) .app_snav:hover{
   .ocm_fbw{
     max-width: 93%;
     margin: 0px auto 20px auto;
+    padding-bottom: 40px;
   }			
   .ocm_sect{
     display: flex;
@@ -1042,18 +1044,7 @@ body:not(.app_snav_open) .app_snav:hover{
     display: flex;
     align-items: center;
     font-size: 20px;
-  }
-  .ocm_sect h3:before{
-    content: '';
-    line-height: 1;
-    display: inline-flex;
-    width: 0.8em;
-    height: 0.8em;
-    border-radius: 100px;
-    margin-right: 7px;
-    margin-top: -3px;
-    background-color: var(--ocm-prim-color);
-  }
+  }  
   .ocm_sect_link a{
     white-space: nowrap;
     display: flex;
@@ -1117,8 +1108,8 @@ body:not(.app_snav_open) .app_snav:hover{
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     display: -webkit-box !important;
-    line-clamp: 4 !important;
-    -webkit-line-clamp: 4 !important;
+    line-clamp: 3 !important;
+    -webkit-line-clamp: 3 !important;
     -webkit-box-orient: vertical;
     color: var(--ocm-color);
     text-decoration: none;
@@ -1957,6 +1948,7 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
   margin: 0px;
   font-size: 14px;
   line-height: 1.3;
+  font-weight: 500;
 }
 .ocm_bfw .ocm_card_body .ocm_chart{
   width: 100%;    
@@ -2058,20 +2050,19 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
 
 /*--------------------------------------------------------------------------------------------------------*/
 .doc-heading{
+  width: 100%;
   font-size: 23px;
   position: relative;
 }
-.doc-heading .ocm_btn_ac{
-  position: absolute;
-  bottom: -10px;
-  right: 0px;
-  float: right;
+.doc-heading .ocm_btn_ac{  
+    float: right;
     height: 30px;
     min-height: 30px;
     font-size: 13px;
     padding: 0 10px;
     border-radius: 2px;
     letter-spacing: -0.02em;
+    transform: translateY(5px);
     background: #0371e3;
 }
 .doc-heading .ocm_btn_ac svg{

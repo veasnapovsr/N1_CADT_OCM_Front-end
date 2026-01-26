@@ -12,19 +12,22 @@ export const createSelectOptions = (labels) => {
                 .map((label) => ({ label, value: label }));
 };
 
+// API disabled - not in use yet (exported to prevent import errors)
 export const API_BASE_URL = "http://localhost/content_egg/wp-json/api";
 
 export const checkWaitingStatus = async () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const userId = user ? user.id : 0;
-    try {
-        const response = await fetch(`${API_BASE_URL}/mission-leave-check?user_id=${userId}`);
-        const result = await response.json();
-        return { hasWaiting: result.hasWaiting || false };
-    } catch (error) {
-        console.error("Error checking waiting status:", error);
-        return { hasWaiting: false };
-    }
+    // API disabled - not in use yet
+    // const user = JSON.parse(localStorage.getItem("user"));
+    // const userId = user ? user.id : 0;
+    // try {
+    //     const response = await fetch(`${API_BASE_URL}/mission-leave-check?user_id=${userId}`);
+    //     const result = await response.json();
+    //     return { hasWaiting: result.hasWaiting || false };
+    // } catch (error) {
+    //     console.error("Error checking waiting status:", error);
+    //     return { hasWaiting: false };
+    // }
+    return { hasWaiting: false }; // Return default value
 };
 
 
@@ -52,5 +55,3 @@ export const formatDateKhmer = (dateString) => {
 
     return `${day} ${month} ${year}`;
 };
-
-

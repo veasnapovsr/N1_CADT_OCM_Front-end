@@ -23,12 +23,11 @@
 					<h3 class="t-lspace">លិខិតបទដ្ឋានគតិយុត្ត</h3>					
 				</div>				
 				<div class="app_card app_04">
-          <router-link :to="dashboardRoute"></router-link>
+					<a target="_blank" href="https://www.ocm.gov.kh"></a>
 					<span class="apico app4"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="2 4 24 20"><path fill="currentColor" d="M22 5.75V20.5a.5.5 0 0 0 .992.09L23 20.5V7h1.25a1.75 1.75 0 0 1 1.744 1.606L26 8.75v12a3.25 3.25 0 0 1-3.066 3.245L22.75 24H5.25a3.25 3.25 0 0 1-3.245-3.066L2 20.75v-15a1.75 1.75 0 0 1 1.606-1.744L3.75 4h16.5a1.75 1.75 0 0 1 1.744 1.606L22 5.75V20.5V5.75ZM9.747 13.004H7.25a1.75 1.75 0 0 0-1.744 1.606l-.006.144v2.496a1.75 1.75 0 0 0 1.606 1.744L7.25 19h2.497a1.75 1.75 0 0 0 1.744-1.607l.005-.143v-2.496a1.75 1.75 0 0 0-1.606-1.745l-.143-.005ZM17.75 17.5h-3.5l-.102.007a.75.75 0 0 0 0 1.486l.102.007h3.5l.102-.007a.75.75 0 0 0 0-1.486l-.102-.007Zm-10.5-2.996h2.497a.25.25 0 0 1 .243.192l.007.058v2.496a.25.25 0 0 1-.193.243l-.057.007H7.25a.25.25 0 0 1-.243-.193L7 17.25v-2.496a.25.25 0 0 1 .193-.244l.057-.006h2.497H7.25Zm10.5-1.5h-3.5l-.102.006a.75.75 0 0 0 0 1.487l.102.007h3.5l.102-.007a.75.75 0 0 0 0-1.487l-.102-.006Zm0-4.507H6.25l-.102.007a.75.75 0 0 0 0 1.486l.102.007h11.5l.102-.007a.75.75 0 0 0 0-1.486l-.102-.007Z"></path></svg></span>
 					<h3 class="t-lspace">ព័ត៌មានថ្មីៗ</h3>					
 				</div>				
-				<div class="app_card app_05">
-          <router-link :to="dashboardRoute"></router-link>
+				<div class="app_card app_05">          
 					<a target="_blank" href="https://webmail.ocm.gov.kh"></a>
 					<span class="apico app5"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5l-8-5V6l8 5l8-5v2z" fill="currentColor"></path></svg></span>
 					<h3 class="t-lspace">សារ​អេឡិច​ត្រូនិច</h3>
@@ -38,6 +37,9 @@
 
 
 		<div class="ocm_fbw">
+			
+			<DashboardDocumentCard />
+			
 				<div class="ocm_sect t-lspace"><h3>ព័ត៌មានទូទៅ</h3>
 					<span class="ocm_sect_link"><a href="https://www.ocm.gov.kh/category/general-information/" target="_blank">អត្ថបទផ្សេងទៀត<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 12 12"><g fill="none"><path d="M6 1a5 5 0 1 1 0 10A5 5 0 0 1 6 1zm.098 2.646a.5.5 0 0 0 0 .708L7.244 5.5H3.5a.5.5 0 0 0 0 1h3.744L6.098 7.646a.5.5 0 1 0 .707.708l2-2a.5.5 0 0 0 0-.708l-2-2a.5.5 0 0 0-.707 0z" fill="currentColor"></path></g></svg></a></span></div>
 				<div class="splide marquee-scroll" data-splide='{
@@ -52,7 +54,7 @@
 						"940": { "perPage": 3 },
 						"767": { "perPage": 2 }
 					},
-					"gap": "20px",
+					"gap": "25px",
 					"direction": "ltr",
 					"autoScroll": {
 					  "speed": 1,
@@ -85,6 +87,7 @@ import { onMounted, onUnmounted, computed } from 'vue';
 import Splide from '@splidejs/splide';
 import { AutoScroll } from '@splidejs/splide-extension-auto-scroll';
 import '@splidejs/splide/css';
+import DashboardDocumentCard from '@/components/DashboardDocumentCard.vue';
 
 // Get user id from localStorage
 const getUserId = () => {
