@@ -12,6 +12,13 @@ export const createSelectOptions = (labels) => {
                 .map((label) => ({ label, value: label }));
 };
 
+export const createSelectOptions = (labels) => {
+        if (!Array.isArray(labels)) return [];
+        return labels
+                .filter((label) => typeof label === "string" && label.trim() !== "")
+                .map((label) => ({ label, value: label }));
+};
+
 // API disabled - not in use yet (exported to prevent import errors)
 export const API_BASE_URL = "http://localhost/content_egg/wp-json/api";
 

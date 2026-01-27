@@ -1822,19 +1822,6 @@ table.wp-list-table .type-ocmdb_data .column-title .row-actions .trash a:before{
 }
 
 /* card info */
-.ocm_dashboard_split{
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: stretch;
-  max-width: 100%;
-  margin: 0;
-}
-.ocm_dashboard_split .ocm_bfw{
-  margin: 3px 0px 0px 0px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
 .ocm_bfw{
   width: 100%;
   display: grid;
@@ -1958,6 +1945,72 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
 .ocm_bfw .ocm_card_body .ocm_chart #myChart{
   height: 350px !important;
 }
+
+/*----------------Dashboards 2 columns--------------------------------------------------------------------*/
+
+/* Border design for 2-column dashboard in FlowDashboard.vue */
+.ocm_dashboard_two_columns .ocm_caw {
+  border: 1.5px solid #e4ebfe;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 12px 0 rgba(0,49,195,0.07), 0 1.5px 4px 0 rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s, border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.ocm_dashboard_two_columns .ocm_caw:hover {
+  border-color: #4755ff;
+  box-shadow: 0 4px 24px 0 rgba(8,121,251,0.13), 0 2px 8px 0 rgba(0,0,0,0.06);
+}
+.ocm_dashboard_two_columns .ocm_card_body {
+  padding: 15px;
+  text-align: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.ocm_dashboard_two_columns .ocm_icardw {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+}
+.ocm_dashboard_two_columns .ocm_icard {
+  width: 33px;
+  height: 33px;
+  border-radius: 7px;
+  background-color: #e4ebfe;
+  color: #4755ff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+
+.ocm_dashboard_two_columns .ocm_caw:hover {
+  border-color: #e3e6e9;
+  box-shadow: 0 4px 24px 0 rgba(239, 241, 242, 0.13), 0 2px 8px 0 rgba(0,0,0,0.06);
+}
+
+.jl_tbl_c{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+/* Center label in 2-column dashboard (column 1) to match PDF alignment */
+.dashboard-title-center {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
 
 /*----------------Dashboards 2 columns--------------------------------------------------------------------*/
 
@@ -2144,7 +2197,7 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
   padding: 0px 10px;
   height: 35px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 7px;
   width: 100%;
   cursor: pointer;
