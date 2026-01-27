@@ -31,9 +31,10 @@
 								<div class="ocmopt-meta-title"><label class="ocmopt-meta-label t-lspace">កាលបរិច្ឆេទ</label></div>
 								<div class="ocmopt-meta-content input-wrapper inpdate">
                   <FlatPickr
-                  v-model="form.startDate"
+                  v-model="startDate"
                   placeholder="កាលបរិច្ឆេទ"
                   @input="handleInput"
+                  :value="modelValue"
                   :config="{
                     dateFormat: 'd-m-Y',
                     altInput: true,
@@ -134,8 +135,6 @@
             4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         <p>អូសនិងទម្លាក់ឯកសារនៅទីនេះ ឬចុចទីនេះ</p>
         <input type="file" multiple ref="fileInput" @change="handleFileUpload" hidden />
-        <!-- <input type="file" multiple ref="fileInput" @change="fileChange" hidden /> -->
-        
       </div>
 
       <div class="img_preview mb-20">
@@ -192,14 +191,12 @@ export default {
         uid: null,
         description: "",
         gallery: [],
-        department: null,
+        department: "",
         documentType: "",
-        ministry: null,
+        ministry: "",
         signature: null,
-        startDate : new Date()
       },
       leaders: leaders,
-      selectedLeader: 0 ,
       departments: [
         { value: "2", label: "អគ្គនាយកដ្ឋានសម្របសម្រួលកិច្ចការទូទៅ" },
         { value: "3", label: "ក្រុមប្រឹក្សាអ្នកច្បាប់" },
@@ -214,7 +211,6 @@ export default {
         { value: "12", label: "គណៈកម្មាធិការសិទ្ធិមនុស្សកម្ពុជា" },
         { value: "13", label: "អាជ្ញាធរជាតិទទួលបន្ទុកកិច្ចការព្រំដែន" },
       ],
-      selectedDeparetment: 0 ,
       // documentTypes: [
       //   { value: "2", label: "ព្រះរាជក្រម" },
       //   { value: "3", label: "ព្រះរាជក្រឹត្យ.បក" },
@@ -231,7 +227,7 @@ export default {
       //   { value: "14", label: "ព្រះរាជក្រឹត្យ.តត" },
       // ],
 
-      documentTypes: [       
+       documentTypes: [       
         { value: "1", label: "របាយការណ៍" },
         { value: "2", label: "សំណើរ" },
       ],
@@ -301,7 +297,6 @@ export default {
         { value: "63", label: "ព្រឹទ្ធសភា" },
         { value: "64", label: "រដ្ឋសភា​​​​​​​​​​​​ជាតិ" },
       ],
-      selectedMinistry: 0 ,
       previewImages: [],
       selectedFiles: [],
       isSubmitting: false,
@@ -316,50 +311,7 @@ export default {
       console.error("User not found in localStorage");
     }
   },
-  mounted() {
-    this.readChildsOrganization(2);
-    this.readMinistries(1);
-    this.getLeaders();
-  },
   methods: {
-    readChildsOrganization(){
-      this.$store.dispatch('organization/listByParent',{
-        search: '' ,
-        perPage: 1000 ,
-        page: 1 ,
-        id: 2 // Parent Organization ID
-      }).then( res => {
-        this.departments = res.data.records.map( (r) => { return { value: r.id , label: r.name }; } )
-      }).catch( error => {
-        console.error( 'កំហុស៖ ', error)
-      })
-    },
-    readMinistries(){
-      this.$store.dispatch('organization/listByParent',{
-        search: '' ,
-        perPage: 1000 ,
-        page: 1 ,
-        id: 1 // Parent Organization ID
-      }).then( res => {
-        this.ministries = res.data.records.map( (r) => { return { value: r.id , label: r.name }; } )
-      }).catch( error => {
-        console.error( 'កំហុស៖ ', error)
-      })
-    },
-    getLeaders(){
-      this.$store.dispatch('officer/list',{
-        search: '' ,
-        perPage: 1000 ,
-        page: 1 ,
-      }).then(res => {
-        this.leaders = res.data.records
-      }).catch( error => {
-        console.log( 'កំហុស៖' , error )
-      })
-    },
-    handleInput(){
-
-    },
     handleDrop(event) {
       event.preventDefault();
       const files = event.dataTransfer.files;
@@ -387,52 +339,26 @@ export default {
     async submitForm() {
       this.isSubmitting = true; // Disable the button
 
-      // // Save the data 
-      // this.$store.dispatch('document/create',{
-      //   subject: '' ,
-      //   object: '' ,
-      //   number : '' ,
-      //   date: '' ,
-      //   /**
-      //    * Optional fields to be added
-      //    */
-      //   document_type: null ,
-      //   departments : [] ,
-      //   ministries: [] ,
-      //   signatures: []
-      // }).then( res => {
-      //   // If save success, then upload files
-      //   if( res.status == 200 ){
-      //     uploadPdf()
-      //   }
-        
-      //   // upload word
-      // }).catch( error => {
-      //   console.error( 'Error: ' , error )
-      // })
-
-      // Upload file of PDF and Word
-
       const formData = new FormData();
       for (const file of this.selectedFiles) {
         formData.append("files[]", file);
       }
 
-      // // Upload images via API
-      // const uploadResponse = await fetch(`${API_BASE_URL}/upload-gallery`, {
-      //   method: "POST",
-      //   body: formData,
-      // });
+      // Upload images via API
+      const uploadResponse = await fetch(`${API_BASE_URL}/upload-gallery`, {
+        method: "POST",
+        body: formData,
+      });
 
-      // const uploadResult = await uploadResponse.json();
-      // this.form.gallery = uploadResult.urls; // Store returned URLs
+      const uploadResult = await uploadResponse.json();
+      this.form.gallery = uploadResult.urls; // Store returned URLs
 
       // Submit feedback
-      // const feedbackResponse = await fetch(`${API_BASE_URL}/feedback`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(this.form),
-      // });
+      const feedbackResponse = await fetch(`${API_BASE_URL}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(this.form),
+      });
 
       if (feedbackResponse.ok) {
         this.submitted = true; // Hide form and show success message
@@ -441,130 +367,6 @@ export default {
       this.isSubmitting = false; // Re-enable button (if needed)
     },
   },
-  setup(){
-    /**
-     * Upload functions
-     */
-    /**
-      * File upload
-      */
-    const pdfs = ref([])
-    /**
-      * On change
-      */
-    function fileChange(event){
-      console.log( 'changed' )
-        for(const file of event.target.files ){
-            // if( index == 'item' || index == 'length' ) continue;
-
-            // allowed types
-            let allowed_mime_types = [ 
-            /**
-              * Image mime type
-              */
-            // 'image/jpeg', 'image/png' 
-            /**
-              * Application file mime type
-              */
-            "application/pdf"
-            ];
-            
-            // allowed max size in MB
-            let allowed_size_mb = 25;
-
-            // Validate file type
-            if(allowed_mime_types.indexOf(file.type) == -1) {
-                notify.error({
-                    title: "ឯកសារយោង" ,
-                    description: "ឯកសារនេះជាប្រភេទ៖ "+ file.type +"។ អនុញ្ញាតតែឯកសារដែលមានប្រភេទជា PDF។" ,
-                    duration: 3000
-                })
-                return;
-            }
-
-            // Validate file size
-            if(file.size > allowed_size_mb*1024*1024) {
-                notify.error({
-                    title: "ឯកសារយោង" ,
-                    description: "ទំហំនៃឯកសារគឺ៖ " + (file.size/1024/1024).toFixed(2) + " មេកាបៃ (MB) លើលទំហំដែលកំណត់គឺ ៥ មេកាបៃ។" ,
-                    duration: 3000
-                })
-            return;
-            }
-
-
-            let reader = new FileReader();
-            reader.onerror = function(e) {
-                console.log('On error');
-            };
-            reader.onprogress = function(e) {
-                console.log('On progress');
-            };
-            reader.onabort = function(e) {
-                console.log('On abort');
-            };
-            reader.onloadstart = function(e) {
-                console.log( "On load start" )
-            };
-            reader.onload = function(e) {
-            // Ensure that the progress bar displays 100% at the end.
-            console.log( 'On load' )
-            /**
-              * Read binary string from 'e.target.result' and convert to base64
-              */
-            pdfs.value.push( btoa( e.target.result ) );
-            // formData.append('files', btoa( e.target.result ) )
-            }
-            // // // Read in the image file as base64 type
-            // // reader.readAsDataURL(file);
-            reader.readAsBinaryString(file);
-
-            // // Read in the image file as base64 type
-            // props.record.pdfs.push( window.URL.createObjectURL( file ) )
-            pdfs.value.push( file )
-        }
-    }
-    /**
-      * On click file upload
-      */
-    function clickUpload(){
-        document.getElementById('referenceDocument').click()
-    }
-    function uploadFiles(){
-        let formData = new FormData();
-        formData.append('id', selectedCertificate.value.id )
-        formData.append('file', pdfs.value[0] )
-        notify.info({
-            title: 'រក្សារទុកព័ត៌មាន' ,
-            description: 'កំពុងបញ្ចូលឯកសារយោង។' ,
-            duration: 3000
-        })
-        store.dispatch(model.name + '/upload', formData ).then( res => {
-            notify.success({
-                title: 'រក្សារទុកព័ត៌មាន' ,
-                description: 'បានបញ្ចូលឯកសារយោងរួចរាល់។' ,
-                duration: 3000
-            })
-            pdfs.value = []
-            getCertificates()
-        }).catch( err => {
-            console.log( err )
-            notify.error({
-                title: 'រក្សារទុកព័ត៌មាន' ,
-                description: 'មានបញ្ហាពេលបញ្ចូលឯកសារយោង។' ,
-                duration: 3000
-            })
-        })
-        uploadHelper.value = false
-    }
-    // End Upload
-
-    return {
-      clickUpload ,
-      fileChange ,
-      uploadFiles
-    }
-  }
 };
 </script>
 

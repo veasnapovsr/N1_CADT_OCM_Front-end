@@ -78,9 +78,34 @@ import axios from "axios"
 import { useRouter } from "vue-router"
 import { toast } from "vue-sonner"
 import auth from './../api/auth'
+import Crud from './../classes/Crud'
 
 export default {
   setup() {
+
+
+    // // បង្កើតឧបករណ៍ CRUD
+    // const productCrud = new Crud(
+    //     import.meta.env.VITE_API_LOCAL ,
+    //     { name: 'មន្ត្រី', module: 'regulators', title: 'ព័ត៌មានមន្ត្រី' , uri: 'search' },
+    //     ['id', 'code', 'date', 'user_id'],
+    //     '',
+    //     1,
+    //     15
+    // );
+
+    // // ទាញយកកំណត់ត្រា
+    // productCrud.list({ page: 1, perPage: 15 }, (res) => {
+    //     console.log('មន្ត្រីទាំងអស់:', productCrud.getRecords());
+    // }, (error) => {
+    //     console.error('កំហុស:', error);
+    // });
+
+    // បិទ/បើកស្ថានភាពសកម្ម
+    // productCrud.toggleActive(123, {}, (res) => {
+    //     console.log('បានប្តូរស្ថានភាពផលិតផល:', productCrud.getRecord());
+    // });
+
     const email = ref("")
     const password = ref("")
     const showPassword = ref(false)
@@ -120,7 +145,7 @@ export default {
          * Start
          */
         auth.login( 
-          "https://hrapi.ocm.gov.kh/api/authcenter/authentication/login" , 
+          import.meta.env.VITE_API_SERVER + "/authentication/login" , 
           {
             email: email.value,
             password: password.value

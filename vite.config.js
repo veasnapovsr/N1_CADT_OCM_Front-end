@@ -35,6 +35,8 @@ export default defineConfig({
   server: {
     fs: {
       allow: ['..']
-    }
+    },
+    host: '127.0.0.1',
+    port: 3009
   }
 })
