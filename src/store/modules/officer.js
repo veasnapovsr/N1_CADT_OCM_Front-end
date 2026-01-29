@@ -42,6 +42,9 @@ const actions = {
       )
     )
   },
+  async signatures ({ state, commit, rootState },params) {
+    return await crud.list(import.meta.env.VITE_API_SERVER+"/"+state.model.name +"/signatures")
+  },
   async read ({ state, commit, rootState },params) {
     return await crud.read(import.meta.env.VITE_API_SERVER+"/"+state.model.name+"/"+params.id+'/read')
   },

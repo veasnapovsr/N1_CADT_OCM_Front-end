@@ -46,6 +46,8 @@ import weddingcertificate from './modules/people/weddingcertificate'
 import childcertificate from './modules/people/childcertificate'
 import spokenlanguage from './modules/people/spokenlanguage'
 
+import transaction from './modules/document/transaction'
+
 const debug = process.env.NODE_ENV !== 'production'
 
 export default createStore({
@@ -57,6 +59,8 @@ export default createStore({
     organization ,
     position , 
     countesy ,
+    // Transaction Document
+    transaction ,
     // Regulator
     regulator ,
     regulatorSearch ,

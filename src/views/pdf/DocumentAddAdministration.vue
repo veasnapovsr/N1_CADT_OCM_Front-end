@@ -177,19 +177,24 @@ import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
 import { InputSelect } from '@/components/ui/inputselect'
-import { leaders } from '@/data/leader.js'
+// import { leaders } from '@/data/leader.js'
 import { FlatPickr } from '@/components/ui/flat-pickr'
 import { onMounted , reactive ,ref } from 'vue'
 import { useStore } from 'vuex'
+import { getUser } from './../../plugins/authentication'
 export default {
   components: {
     InputSelect ,
     Header ,
     Footer ,
-    Aside 
+    Aside ,
+    FlatPickr
   },
   setup(){
 
+    if( getUser() === undefined || getUser() === null ){
+      router.push('/login')  
+    }
   
     /**
      * ប្រកាសអថេរ - Declaration Variables
@@ -351,12 +356,9 @@ export default {
       })
     }
     function getLeaders(){
-      store.dispatch('officer/list',{
-        search: '' ,
-        perPage: 1000 ,
-        page: 1 ,
-      }).then(res => {
-        leaders = res.data.records
+      store.dispatch('officer/signatures').then(res => {
+        console.log( res.data.records)
+        leaders.value = res.data.records.map( (r) => { return { value: r.id , label: r.name , name: r.name , img : r.image } })
       }).catch( error => {
         console.log( 'កំហុស៖' , error )
       })

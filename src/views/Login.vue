@@ -75,14 +75,20 @@
 <script>
 import { ref, onMounted } from "vue"
 import axios from "axios"
+import { setMaxUploadFilesize } from './../plugins/file'
+import { getUser } from './../plugins/authentication'
 import { useRouter } from "vue-router"
 import { toast } from "vue-sonner"
+import { useStore } from 'vuex'
 import auth from './../api/auth'
 import Crud from './../classes/Crud'
 
 export default {
   setup() {
 
+    if( getUser() !== undefined && getUser() !== null ){
+      router.push('/login')  
+    }
 
     // // បង្កើតឧបករណ៍ CRUD
     // const productCrud = new Crud(
@@ -106,30 +112,31 @@ export default {
     //     console.log('បានប្តូរស្ថានភាពផលិតផល:', productCrud.getRecord());
     // });
 
+    const store = useStore()
     const email = ref("")
     const password = ref("")
     const showPassword = ref(false)
     const router = useRouter()
 
     // Redirect if already logged in
-    onMounted(() => {
-      const token = localStorage.getItem("token")
-      if (token) {
-        try {
-          const userRaw = localStorage.getItem("user")
-          const user = userRaw ? JSON.parse(userRaw) : null
-          const userId = user?.id ? String(user.id) : ""
+    // onMounted(() => {
+    //   const token = localStorage.getItem("token")
+    //   if (token) {
+    //     try {
+    //       const userRaw = localStorage.getItem("user")
+    //       const user = userRaw ? JSON.parse(userRaw) : null
+    //       const userId = user?.id ? String(user.id) : ""
 
-          if (userId === "2901") {
-            router.push("/pdf/flow-dash2")
-          } else {
-            router.push("/dashboard")
-          }
-        } catch {
-          router.push("/dashboard")
-        }
-      }
-    })
+    //       if (userId === "2901") {
+    //         router.push("/pdf/flow-dash2")
+    //       } else {
+    //         router.push("/dashboard")
+    //       }
+    //     } catch {
+    //       router.push("/dashboard")
+    //     }
+    //   }
+    // })
 
     const login = async () => {
       if (!email.value || !password.value) {
@@ -151,33 +158,32 @@ export default {
             password: password.value
           }
         ).then( res => {
-          
-          const { token, record, upload_max_filesize } = res.data
-
-          localStorage.setItem("token", JSON.stringify(token))
-          localStorage.setItem("user", JSON.stringify(record))
-          localStorage.setItem("upload_max_filesize", upload_max_filesize)
           toast.success("ចូលប្រព័ន្ធបានជោគជ័យ")
+          /**
+           * Store the authenticated user into the store
+           */
+          store.commit('auth/setAuthentication',{
+            user: res.data.record ,
+            token: res.data.token
+          })
+
+          setMaxUploadFilesize( parseFloat( res.data.upload_max_filesize.replace( 'M' , '' ) ) )
           
-          const userId = record?.id ? String(record.id) : ""
+          var user = getUser()
+          var leaders = [ 'prime_minister' , 'deputy_minister' , 'senior_minister' , 'minister' , 'secretary_of_state' , 'deputy_secretary_of_state' , 'general_department' , 'deputy_general_department' ] ;
+          // var admin_officers = [ 'department' , 'deputy_department' , 'division' , 'deputy_division' , 'officer' , 'contract_officer' , 'intership' ] ;
 
-          if (userId === "2901") {
-            router.push("/pdf/flow-dash2")
-          } else {
-            router.push("/dashboard")
-          }
+          for( var i = 0 ; i < user.roles.length ; i++ ){
+            var role = user.roles[i] ;
+            if( leaders.indexOf( role.sub_role ) !== -1 ){
+              // សម្រាប់ថ្នាក់ដឹកនាំ និងអ្នកគ្រប់គ្រងទូទៅ
+              router.push("/dashboard")
+              return ;
+            }
+          } 
+          // ទំព័រការងារសម្រាប់រដ្ឋបាល
+          router.push("/pdf/flow-dash2")
         })
-
-        // const response = await axios.post(
-        //   "https://hrapi.ocm.gov.kh/api/authcenter/authentication/login",
-        //   {
-        //     email: email.value,
-        //     password: password.value
-        //   }
-        // )
-
-        
-
         /**
          * End
          */

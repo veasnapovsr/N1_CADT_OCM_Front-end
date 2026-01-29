@@ -66,7 +66,7 @@ export default {
       { 
         headers: {
           Authorization : getAuthorization()  , // bear token
-          'Content-Type': 'multipart/form-data' ,
+          // 'Content-Type': 'multipart/form-data' ,
         }
       }
     )
