@@ -34,7 +34,7 @@
         </span>
         <span class="jl_tbl_c">
           <span class="tb_n1 bold fs-95">{{ doc.creator }}</span>
-          <span class="tb_n1 fs-90">អនុរដ្ឋលេខាធិការ</span>
+          <span class="tb_n1 fs-90">{{ doc.position }}</span>
         </span>
       </span>
     </td>
@@ -116,12 +116,15 @@ const props = defineProps({
 /* ===================== ROUTER ===================== */
 const router = useRouter()
 
+// console.log( props )
 /* ===================== ACTIONS ===================== */
 const goToDetail = () => {
-  router.push({
-    name: 'pdf-documents-detail',
-    params: { id: props.doc.id }
-  })
+  router.push( '/pdf/documents-detail/' + parseInt( props.doc.id ) )
+  // router.push({
+  //   name: 'pdf-documents-detail',
+  //   params: { id: props.doc.id } ,
+  //   path: '/documents-detail/' + props.doc.id
+  // })
 }
 
 const goToEdit = () => {

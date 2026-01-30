@@ -19,6 +19,7 @@
 
 <script setup>
 import { FlatPickr } from '@/components/ui/flat-pickr'
+import { ref } from 'vue'
 const props = defineProps({
   modelValue: {
     type: String,
@@ -26,6 +27,7 @@ const props = defineProps({
   }
 })
 
+const startDate = ref( new Date() )
 const emit = defineEmits(['update:modelValue'])
 
 function handleInput(event) {

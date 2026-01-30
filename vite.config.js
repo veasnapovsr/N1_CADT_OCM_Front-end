@@ -37,6 +37,10 @@ export default defineConfig({
       allow: ['..']
     },
     host: '127.0.0.1',
-    port: 3009
+    port: 3009 ,
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+      '/storage': 'http://127.0.0.1:8000'
+    }
   }
 })

@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useStore } from 'vuex'
 
 
 /* =======================
@@ -35,7 +34,6 @@ import DocumentSentToFilter from '@/components/flow/DocumentSentToFilter.vue'
 import { flowStats } from '@/data/Flowstatuscheck'
 import { documents } from '@/data/documents'
 
-const store = useStore()
 const route = useRoute()
 
 
@@ -93,50 +91,15 @@ const sentToOptions = computed(() => [
 /* =======================
    FILTER + SORT LOGIC
 ======================= */
-
-const recordAll = ref([])
-const records = ref([]);
-store.dispatch('transaction/list').then( res => {
-  recordAll.value = res.data.records.map( (r) => {
-    return {
-      id : r.id , 
-      title : r.subject ,
-      code : r.document.number ,
-      date : r.date_in ,
-      creator : r.sender.lastname + ' ' + r.sender.firstname ,
-      creatorAvatar : '/female.jpeg' , // r.sender.avatar_url ,
-      size : "2MB" , // r.document.size 
-      status : r.status != null && r.status != '' ? r.status : 'draft' ,
-      sentAt : r.sent_at ,
-      sentTo : r.receivers.length <= 0 ? 'គ្មានអ្នកទទួល' : r.receivers[0].lastname + ' ' + r.receivers[0].firstname ,
-      position : r.sender.officer.jobs.length <= 0 ? '' : r.sender.officer.jobs[0].organization_structure_position.position.name
-      // position : r.sender.officer.jobs.length <= 0 ? '' : r.sender.officer.jobs[0].organization_structure_position.organization_structure.organization.name
-    }
-  })
-  records.value = recordAll.value
-  
-  // id: 1,
-  // title: 'អនុម័តយល់ព្រមលើកិច្ចព្រមព្រៀងបន្ថែមទៅលើសន្ធិសញ្ញាស្តីពីតំបន់អាស៊ី-អាគ្នេយ៍គ្មានអាវុធ នុយក្លេអ៊ែរ ដែលត្រូវបានអនុម័តដោយរដ្ឋភាគីនៃសន្ធិសញ្ញាស្តីពីតំបន់អាស៊ី-អាគ្នេយ៍គ្មានអាវុធនុយក្លេអ៊ែរ នៅទីក្រុងគូឡាឡាំពួនៃប្រទេសម៉ាឡេស៊ី នាថ្ងៃទី២៥ ខែឧសភា ឆ្នាំ២០២៥ ហើយដែលមានអត្ថបទ ទាំងស្រុងភ្ជាប់មកជាមួយនេះ។',
-  // code: 'នស/រកម / ០០៣២',
-  // date: '2024-04-04',
-  // creator: 'លោកជំទាវ អ៊ុង ច័ន្ទសោភា',
-  // creatorAvatar: '/female.jpeg',
-  // size: '3 MB',
-  // status: 'approved',
-  // sentAt: '2024-04-04T10:00:00',
-  // sentTo: 'នាយកដ្ឋានរដ្ឋបាល'
-
-}).catch( err => console.log( err ) ) 
-
 const filteredDocuments = computed(() => {
-  records.value = recordAll.value.filter(doc => {
+  let data = documents.filter(doc => {
     const matchName =
       !selectedName.value ||
-      doc.document.objective.includes(selectedName.value)
+      doc.title.includes(selectedName.value)
 
     const matchAuthor =
       !selectedAuthor.value ||
-      ( doc.sender != null && doc.sender.firstname.includes(selectedAuthor.value) )
+      doc.creator.includes(selectedAuthor.value)
 
     const matchStatus =
       !selectedStatus.value ||
@@ -144,7 +107,7 @@ const filteredDocuments = computed(() => {
 
     const matchDate =
       !selectedDate.value ||
-      doc.data_in === selectedDate.value
+      doc.date === selectedDate.value
 
     const matchSentTo =
       !selectedSentTo.value ||
@@ -171,8 +134,7 @@ const filteredDocuments = computed(() => {
     })
   }
 
-  // return data
-  return records
+  return data
 })
 </script>
 
@@ -240,7 +202,7 @@ const filteredDocuments = computed(() => {
           <!-- ROW VIEW -->
           <FlowTable
             v-if="viewMode === 'row'"
-            :documents="records"
+            :documents="filteredDocuments"
             :sort-key="sortKey"
             :sort-order="sortOrder"
             @sort="onSort"

@@ -25,9 +25,12 @@
             </h2>            
           </div>
               <PdfViewer
-                src="/docs/report2.pdf"
+                src="pdfSrc"
                 class="doc_preview"
               />
+
+              <!-- <vue-pdf-embed :source="pdfSrc" class="w-full h-screen overflow-y-scroll" /> -->
+
               <!-- <PdfViewer
                 src="https://snippet.embedpdf.com/ebook.pdf"
                 class="w-full h-full"
@@ -57,4 +60,28 @@ import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
 import DocumentTimeline from '@/components/DocumentTimeline.vue'
+import { useStore } from 'vuex'
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { keysWithFilter } from 'naive-ui/es/tree/src/utils'
+import VuePdfEmbed from 'vue-pdf-embed'
+
+const store = useStore()
+const route = useRoute()
+const pdfSrc = ref(null)
+// console.log( route.params.id )
+const documentTransaction = ref(null)
+const documentTransactionId = ref( route.params.id > 0 ? route.params.id : 0 )
+if( documentTransactionId.value > 0 ){
+  store.dispatch( 'transaction/read' , { id : documentTransactionId.value }).then( res => {
+    documentTransaction.value = res.data.record
+    if( documentTransaction.value.document != undefined && documentTransaction.value.document.pdf_file != '' && documentTransaction.value.document.pdf_file != null ){
+      pdfSrc.value = documentTransaction.value.document.pdf_file
+    }else{
+      pdfSrc.value = '/docs/report2.pdf'
+    }
+    console.log( pdfSrc.value )
+  }).catch( err => console.log( err ))
+}
+
 </script>

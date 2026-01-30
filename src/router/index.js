@@ -132,7 +132,7 @@ const routes = [
         component: DocumentSuccess
       },      
       {
-        path: 'documents-detail',
+        path: 'documents-detail/:id',
         name: 'pdf-documents-detail',
         component: DocumentDetail
       },      
