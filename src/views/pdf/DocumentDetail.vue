@@ -24,24 +24,10 @@
 
             </h2>            
           </div>
-
-
-              <div style="display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%;">
-                <iframe
-                  v-if="pdfSrc"
-                  :src="pdfSrc"
-                  width="100%"
-                  height="800px"
-                  style="border:none; max-width: 900px; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); background: #fff; margin-bottom: 24px;"
-                  title="PDF Preview"
-                ></iframe>
-              </div>
-<!-- 
-              <div v-if="pdfSrc" class="mt-4">
-                <a :href="pdfSrc" target="_blank" rel="noopener" class="button ocm_btn_ac button-primary">
-                  Open PDF in new tab
-                </a>
-              </div> -->
+              <PdfViewer
+                src="pdfSrc"
+                class="doc_preview"
+              />
 
               <!-- <vue-pdf-embed :source="pdfSrc" class="w-full h-screen overflow-y-scroll" /> -->
 
@@ -69,13 +55,6 @@
 
 
 <script setup>
-import { ref as vueRef } from 'vue'
-
-const pdfError = vueRef(false)
-
-function onPdfError() {
-  pdfError.value = true
-}
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
@@ -84,7 +63,7 @@ import DocumentTimeline from '@/components/DocumentTimeline.vue'
 import { useStore } from 'vuex'
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-// ...existing code...
+import { keysWithFilter } from 'naive-ui/es/tree/src/utils'
 import VuePdfEmbed from 'vue-pdf-embed'
 
 const store = useStore()
