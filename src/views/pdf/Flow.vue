@@ -147,6 +147,8 @@ const fetchDocuments = async (page = 1) => {
         totalPages: res.data.pagination.totalPages || 1,
         perPage: res.data.pagination.perPage || 20,
         page: res.data.pagination.page || 1,
+        previous: res.data.pagination.previous,
+        next: res.data.pagination.next,
         search: res.data.pagination.search || ''
       }
       currentPage.value = pagination.value.page
