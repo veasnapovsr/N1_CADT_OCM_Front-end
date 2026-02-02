@@ -127,265 +127,213 @@ export default {
     FlatPickr ,
     NButton
   },
-  setup(){
-    const store = useStore()
-    const router = useRouter()
-    const notify = useNotification()
+  setup () {
+  const store = useStore()
+  const router = useRouter()
+  const notify = useNotification()
 
-    if( getUser() === undefined || getUser() === null ){
-      router.push('/login')  
-    }
-    
-    const form = reactive({
-      objective: '' ,
-      number : '' ,
-      startDate: new Date() ,
-      documentType: null
-    })
-    
-    const documentTypes = ref( [      
-      { value: "1", label: "របាយការណ៍" },
-      { value: "2", label: "សំណើរ" },
-      ])
-      // ministries removed
-    const previewImages = ref([])
-    const selectedFiles = ref([])
-    const isSubmitting = ref(false)
-    const submitted = ref(false)
+  if (getUser() === undefined || getUser() === null) {
+    router.push('/login')
+  }
 
+  /* =====================
+     STATE
+  ===================== */
+  const form = reactive({
+    objective: '',
+    number: '',
+    startDate: new Date(),
+    documentType: null
+  })
 
-    /**
-     * Functions
-     */
+  const documentTypes = ref([
+    { value: '1', label: 'របាយការណ៍' },
+    { value: '2', label: 'សំណើរ' }
+  ])
 
-    function handleInput (){
+  const previewImages = ref([])
+  const files = ref([])
 
-    }
-    function handleDrop(event) {
-      event.preventDefault();
-      const files = event.dataTransfer.files;
-      processFiles(files);
-    }
-    function handleFileUpload(event) {
-      const files = event.target.files;
-      processFiles(files);
-    }
-    function selectFiles() {
-      // $refs.fileInput.click();
-    }
-    function processFiles(files) {
-      for (const file of files) {
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            previewImages.push(e.target.result);
-          };
-          reader.readAsDataURL(file);
-          selectedFiles.push(file);
-        }
-      }
+  const submitted = ref(false)
+  const isSubmitting = ref(false)
+
+  // 🔴 validation errors
+  const errors = ref({})
+
+  /* =====================
+     VALIDATION
+  ===================== */
+  function validateForm () {
+    errors.value = {}
+
+    if (!form.objective || !form.objective.trim()) {
+      errors.value.objective = true
     }
 
-    function save(){
-      submitted.value = true 
-      store.dispatch('transaction/create',{
-        date_in : form.startDate ,
-        number : form.number ,
-        objective : form.objective ,
-        document_type : form.documentType
-      }).then( res => {
-        if( res.data.ok ){
-          notify.success({
-            title: 'ព័ត៌មានប្រតិបត្តិការឯកសារ' ,
-            content: 'រក្សារទុកព័ត៌មានប្រតិបត្តិការឯកសាររូចរាល់។' ,
-            duratoin: 2000 
-          })
-          // Upload pdf file
-          uploadFiles(res.data.record)
-        }
-      }).catch( err => {
-        submitted.value = false 
-        console.log( err )
+    if (!form.number || !form.number.trim()) {
+      errors.value.number = true
+    }
+
+    if (!form.startDate) {
+      errors.value.startDate = true
+    }
+
+    if (!form.documentType) {
+      errors.value.documentType = true
+    }
+
+    return Object.keys(errors.value).length === 0
+  }
+
+  /* =====================
+     FORM SUBMIT
+  ===================== */
+  async function save () {
+    if (isSubmitting.value) return
+
+    // ❌ stop if invalid
+    if (!validateForm()) {
+      notify.error({
+        title: 'ព័ត៌មានមិនគ្រប់គ្រាន់',
+        description: 'សូមបំពេញព័ត៌មានដែលបានគូសពណ៌ក្រហម',
+        duration: 2000
       })
+      return
     }
 
-    /**
-     * Upload functions
-     */
-    /**
-     * File upload
-     */
-    const files = ref([])
-    /**
-     * On change
-     */
-    function fileChange(event){
-      files.value = []
-      console.log( files.value.length )
-      let fileTypeHelper = { word : false , pdf : false };
-      if( files.value.length >= 2 ){
-        notify.info({
-          title: 'ការភ្ជាប់ឯកសារ' ,
-          content: 'អនុញ្ញាតតែឯកសារចំនួន ២ ដែល ១ ជា PDF និង ១ ជា WORD។' ,
-          duration : 2000
+    isSubmitting.value = true
+    submitted.value = false
+
+    try {
+      const res = await store.dispatch('transaction/create', {
+        date_in: form.startDate,
+        number: form.number,
+        objective: form.objective,
+        document_type: form.documentType
+      })
+
+      if (res?.data?.ok) {
+        submitted.value = true
+
+        notify.success({
+          title: 'ព័ត៌មានប្រតិបត្តិការឯកសារ',
+          content: 'រក្សារទុកព័ត៌មានប្រតិបត្តិការឯកសាររួចរាល់។',
+          duration: 2000
         })
-        return 
+
+        uploadFiles(res.data.record)
       }
-      for(const file of event.target.files ){
-        if( fileTypeHelper.word && fileTypeHelper.pdf ) break;
+    } catch (err) {
+      submitted.value = false
+      console.error(err)
 
-        // allowed types
-        let allowed_mime_types = [ 
-          /**
-           * Image mime type
-           */
-          // 'image/jpeg', 'image/png' 
-          /**
-           * Application file mime type
-           */
-          "application/pdf" ,
-          "application/msword" ,
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ];
-        let pdfFileMimeType = [ "application/pdf" ] ;
-        let wordFileMimeType = [
-          "application/msword" ,
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ] ;
-        
-        // allowed max size in MB
-        let allowed_size_mb = 25;
-
-        // Validate file type
-        if(allowed_mime_types.indexOf(file.type) == -1) {
-            notify.error({
-                title: "ឯកសារយោង" ,
-                description: "ឯកសារនេះជាប្រភេទ៖ "+ file.type +"។ អនុញ្ញាតតែឯកសារដែលមានប្រភេទជា PDF និង WORD (.doc, docx)។" ,
-                duration: 3000
-            })
-            return;
-        }
-
-        // Validate file size
-        if(file.size > allowed_size_mb*1024*1024) {
-            notify.error({
-                title: "ឯកសារយោង" ,
-                description: "ទំហំនៃឯកសារគឺ៖ " + (file.size/1024/1024).toFixed(2) + " មេកាបៃ (MB) លើលទំហំដែលកំណត់គឺ ៥ មេកាបៃ។" ,
-                duration: 3000
-            })
-            return;
-        }
-
-        let reader = new FileReader();
-        reader.onerror = function(e) {
-            // console.log('On error');
-        };
-        reader.onprogress = function(e) {
-            // console.log('On progress');
-        };
-        reader.onabort = function(e) {
-            // console.log('On abort');
-        };
-        reader.onloadstart = function(e) {
-            // console.log( "On load start" )
-        };
-        reader.onload = function(e) {
-          // Ensure that the progress bar displays 100% at the end.
-          // console.log( 'On load' )
-          /**
-           * Read binary string from 'e.target.result' and convert to base64
-           */
-            // files.value.push( btoa( e.target.result ) );
-          // formData.append('files', btoa( e.target.result ) )
-        }
-        // // // Read in the image file as base64 type
-        // // reader.readAsDataURL(file);
-        reader.readAsBinaryString(file);
-
-        // // Read in the image file as base64 type
-        // props.record.files.push( window.URL.createObjectURL( file ) )
-        // console.log( "ទំហំនៃឯកសារ៖ " + file.size )
-        if(pdfFileMimeType.indexOf(file.type) == -1 && fileTypeHelper.pdf == false && files.value.length < 2  ) {
-          fileTypeHelper.pdf = true 
-          files.value.push(file)
-        }
-        if(wordFileMimeType.indexOf(file.type) == -1 && fileTypeHelper.word == false && files.value.length < 2 ) {
-          files.value.push(file)
-          fileTypeHelper.word = true
-        }
-      }
-    }
-    /**
-     * On click file upload
-     */
-    function clickUpload(){
-        document.getElementById('referenceDocument').click()
-    }
-    function uploadFiles(record){
-      const formData = new FormData();
-
-      // Add files
-      files.value.forEach(file => {
-          formData.append('files[]', file); // For multiple files
-      });
-
-      // Add other form data
-      formData.append('document_id', record.document_id )
-      formData.append('objective', form.objective );
-      formData.append('number', form.number );
-      formData.append('date_in', form.startDate );
-      formData.append('document_type', form.documentType );
-
-        // let formData = new FormData();
-        // formData.append('document_id', record.document_id )
-        // formData.append('file', files.value )
-
-        notify.info({
-          title: 'ឯកសារយោង' ,
-          description: 'កំពុងភ្ជាប់ឯកសារយោង។' ,
-          duration: 3000
-        })
-        store.dispatch('transaction/uploadFiles', formData ).then( res => {
-          notify.success({
-              title: 'ឯកសារយោង' ,
-              description: 'បានភ្ជាប់ឯកសារយោងរួចរាល់។' ,
-              duration: 3000
-          })
-          files.value = []
-        }).catch( err => {
-          submitted.value = true 
-          console.log( err )
-          notify.error({
-              title: 'ឯកសារយោង' ,
-              description: 'មានបញ្ហាភ្ជាប់ឯកសារយោង។' ,
-              duration: 3000
-          })
-        })
-        // uploadHelper.value = false
-        // submitted.value = false
-    }
-    // End Upload
-
-    return {
-      /**
-       * Variable
-       */
-      previewImages ,
-      selectFiles , 
-      form ,
-      documentTypes ,
-      submitted ,
-      /**
-       * Functions
-       */
-      handleInput ,
-      save ,
-      fileChange ,
-      uploadFiles ,
-      clickUpload ,
-      files
+      notify.error({
+        title: 'បរាជ័យ',
+        description: err?.response?.status === 422
+          ? 'ទិន្នន័យមិនត្រឹមត្រូវ (422)'
+          : 'មានបញ្ហាក្នុងការផ្ញើទិន្នន័យ',
+        duration: 3000
+      })
+    } finally {
+      isSubmitting.value = false
     }
   }
+
+  /* =====================
+     FILE UPLOAD
+  ===================== */
+  function fileChange (event) {
+    files.value = []
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+
+    for (const file of event.target.files) {
+      if (!allowedTypes.includes(file.type)) {
+        notify.error({
+          title: 'ឯកសារយោង',
+          description: 'អនុញ្ញាតតែ PDF និង WORD',
+          duration: 3000
+        })
+        return
+      }
+
+      if (file.size > 25 * 1024 * 1024) {
+        notify.error({
+          title: 'ឯកសារយោង',
+          description: 'ឯកសារលើស 25MB',
+          duration: 3000
+        })
+        return
+      }
+
+      files.value.push(file)
+    }
+  }
+
+  function clickUpload () {
+    document.getElementById('referenceDocument').click()
+  }
+
+  function uploadFiles (record) {
+    const formData = new FormData()
+
+    files.value.forEach(file => {
+      formData.append('files[]', file)
+    })
+
+    formData.append('document_id', record.document_id)
+    formData.append('objective', form.objective)
+    formData.append('number', form.number)
+    formData.append('date_in', form.startDate)
+    formData.append('document_type', form.documentType)
+
+    notify.info({
+      title: 'ឯកសារយោង',
+      description: 'កំពុងភ្ជាប់ឯកសារយោង...',
+      duration: 2000
+    })
+
+    store.dispatch('transaction/uploadFiles', formData)
+      .then(() => {
+        notify.success({
+          title: 'ឯកសារយោង',
+          description: 'បានភ្ជាប់ឯកសារយោងរួចរាល់។',
+          duration: 3000
+        })
+        files.value = []
+      })
+      .catch(err => {
+        console.error(err)
+        notify.error({
+          title: 'ឯកសារយោង',
+          description: 'មានបញ្ហាភ្ជាប់ឯកសារយោង',
+          duration: 3000
+        })
+      })
+  }
+
+  function handleInput () {}
+
+  /* =====================
+     EXPOSE
+  ===================== */
+  return {
+    form,
+    documentTypes,
+    previewImages,
+    files,
+    submitted,
+    errors,
+    save,
+    fileChange,
+    clickUpload,
+    handleInput
+  }
+}
 };
 </script>
 
