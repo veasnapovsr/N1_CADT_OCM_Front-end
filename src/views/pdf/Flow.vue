@@ -75,13 +75,41 @@ const onSort = (key) => {
 }
 
 /* =======================
+   AUTHOR OPTIONS (AUTO)
+======================= */
+const authorOptions = computed(() => {
+  // Get unique creators from fetched records
+  const uniqueCreators = Array.from(
+    new Set(
+      records.value
+        .map(d => d.creator)
+        .filter(v => v && v.trim() !== '')
+    )
+  )
+  
+  // Map to the format expected by InputSelect
+  return [
+    { value: '', name: 'ទាំងអស់', img: null },
+    ...uniqueCreators.map(creator => {
+      // Find the record to get the avatar
+      const record = records.value.find(r => r.creator === creator)
+      return {
+        value: creator,
+        name: creator,
+        img: record?.creatorAvatar || '/female.jpeg'
+      }
+    })
+  ]
+})
+
+/* =======================
    SENT TO OPTIONS (AUTO)
 ======================= */
 const sentToOptions = computed(() => [
   { value: '', label: 'ទាំងអស់' },
   ...Array.from(
     new Set(
-      documents
+      records.value
         .map(d => d.sentTo)
         .filter(v => v && v !== 'N/A')
     )
@@ -99,6 +127,15 @@ const pagination = ref({
   totalPages: 1,
   perPage: 20,
   page: 1,
+  // Navigation fields
+  first: null,
+  firstUrl: null,
+  previous: null,
+  previousUrl: null,
+  next: null,
+  nextUrl: null,
+  last: null,
+  lastUrl: null,
   search: ''
 })
 const isLoading = ref(false)
@@ -109,15 +146,38 @@ const isLoading = ref(false)
 const records = ref([])
 
 /* =======================
+   BUILD SEARCH QUERY
+======================= */
+const buildSearchQuery = () => {
+  const searchParts = []
+  
+  if (selectedName.value) {
+    searchParts.push(selectedName.value)
+  }
+  if (selectedAuthor.value) {
+    searchParts.push(selectedAuthor.value)
+  }
+  if (selectedDate.value) {
+    searchParts.push(selectedDate.value)
+  }
+  if (selectedSentTo.value) {
+    searchParts.push(selectedSentTo.value)
+  }
+  
+  return searchParts.join(' ')
+}
+
+/* =======================
    FETCH DATA FUNCTION
 ======================= */
 const fetchDocuments = async (page = 1) => {
   isLoading.value = true
   try {
+    const searchQuery = buildSearchQuery()
     const params = {
       page: page,
       perPage: pagination.value.perPage,
-      search: pagination.value.search,
+      search: searchQuery || pagination.value.search,
       status: selectedStatus.value || ''
     }
     
@@ -142,13 +202,21 @@ const fetchDocuments = async (page = 1) => {
     }
     
     if (res.data && res.data.pagination) {
+      // Map backend pagination response to component pagination object
       pagination.value = {
         totalRecords: res.data.pagination.totalRecords || 0,
         totalPages: res.data.pagination.totalPages || 1,
         perPage: res.data.pagination.perPage || 20,
         page: res.data.pagination.page || 1,
+        // Navigation fields
+        first: res.data.pagination.first,
+        firstUrl: res.data.pagination.firstUrl,
         previous: res.data.pagination.previous,
+        previousUrl: res.data.pagination.previousUrl,
         next: res.data.pagination.next,
+        nextUrl: res.data.pagination.nextUrl,
+        last: res.data.pagination.last,
+        lastUrl: res.data.pagination.lastUrl,
         search: res.data.pagination.search || ''
       }
       currentPage.value = pagination.value.page
@@ -167,6 +235,17 @@ const handlePageChange = (page) => {
   if (page >= 1 && page <= pagination.value.totalPages) {
     fetchDocuments(page)
   }
+}
+
+/* =======================
+   SEARCH HANDLER
+======================= */
+const handleSearch = () => {
+  // Reset to page 1 when searching
+  currentPage.value = 1
+  pagination.value.page = 1
+  // Fetch documents with current filters
+  fetchDocuments(1)
 }
 
 /* =======================
@@ -265,7 +344,10 @@ const filteredDocuments = computed(() => {
 
             <DateSelect v-model="selectedDate" />
 
-            <AuthorNameFilter v-model="selectedAuthor" />
+            <AuthorNameFilter 
+              v-model="selectedAuthor"
+              :author-options="authorOptions"
+            />
 
             <DocumentStatusFilter v-model="selectedStatus" />
 
@@ -275,7 +357,11 @@ const filteredDocuments = computed(() => {
               :options="sentToOptions"
             />
 
-            <button class="button ocm_btn_ac button-primary t-lspace">
+            <button 
+              class="button ocm_btn_ac button-primary t-lspace"
+              @click="handleSearch"
+              :disabled="isLoading"
+            >
               <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="85.36 85.33 815.27 815.3"> <g id="icomoon-ignore"> </g> <path d="M447.998 85.331c-57.831 0.005-114.822 13.839-166.219 40.349s-95.708 64.927-129.238 112.046c-33.53 47.118-55.306 101.572-63.511 158.818s-2.601 115.625 16.345 170.26c18.945 54.641 50.682 103.956 92.563 143.836s92.692 69.166 148.193 85.417c55.501 16.246 114.083 18.985 170.86 7.992 56.776-10.998 110.095-35.415 155.52-71.209l155.817 155.817c8.049 7.772 18.826 12.073 30.013 11.976s21.888-4.582 29.798-12.493c7.91-7.91 12.396-18.611 12.493-29.798s-4.204-21.965-11.976-30.013l-155.817-155.817c42.153-53.478 68.403-117.745 75.74-185.443 7.332-67.698-4.536-136.094-34.258-197.36s-76.088-112.927-133.801-149.071c-57.708-36.144-124.431-55.31-192.524-55.306zM170.665 447.998c0-73.553 29.219-144.094 81.229-196.104s122.551-81.229 196.104-81.229c73.555 0 144.094 29.219 196.103 81.229 52.014 52.010 81.229 122.551 81.229 196.104 0 73.551-29.215 144.094-81.229 196.103-52.009 52.009-122.547 81.229-196.103 81.229-73.553 0-144.094-29.22-196.104-81.229s-81.229-122.552-81.229-196.103z"></path> </svg>
               ស្វែងរក
             </button>
@@ -290,7 +376,7 @@ const filteredDocuments = computed(() => {
           <!-- ROW VIEW -->
           <FlowTable
             v-if="viewMode === 'row'"
-            :documents="records"
+            :documents="filteredDocuments"
             :pagination="pagination"
             :is-loading="isLoading"
             :sort-key="sortKey"

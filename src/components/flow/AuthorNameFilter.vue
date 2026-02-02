@@ -2,7 +2,7 @@
   <div class="items inpauth">
     <InputSelect
       :model-value="modelValue"
-      :options="leaders"
+      :options="authorOptions"
       track-by="value"
       label="name"
       :placeholder="placeholder"
@@ -29,7 +29,6 @@
 
 <script setup>
 import { InputSelect } from '@/components/ui/inputselect'
-import { leaders } from '@/data/leader.js'
 
 const props = defineProps({
   modelValue: {
@@ -39,6 +38,10 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'អ្នកបង្កើតឯកសារ'
+  },
+  authorOptions: {
+    type: Array,
+    default: () => []
   }
 })
 

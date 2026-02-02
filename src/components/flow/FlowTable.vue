@@ -44,7 +44,7 @@
         v-if="pageNum === pagination?.page"
         class="current nav_i"
       >
-        {{ convertToKhmerNumeral(pageNum) }}
+        {{ formatKhmerNumber(pageNum) }}
       </span>
       <button 
         v-else-if="pageNum !== '...'"
@@ -52,7 +52,7 @@
         @click="handlePageChange(pageNum)"
         :disabled="isLoading"
       >
-        {{ convertToKhmerNumeral(pageNum) }}
+        {{ formatKhmerNumber(pageNum) }}
       </button>
       <span v-else class="nav_i">...</span>
     </template>
@@ -70,13 +70,14 @@
       </svg>
     </button>
   </div>
-  <span class="ocm_count t-lspace">ចំនួនឯកសារ៖ {{ convertToKhmerNumeral(pagination?.totalRecords || 0) }}</span>
+  <span class="ocm_count t-lspace">ចំនួនឯកសារ៖ {{ formatKhmerNumber(pagination?.totalRecords || 0) }}</span>
 </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import DocumentRow from '@/components/DocumentRow.vue'
+import { formatKhmerNumber } from '@/lib/utils'
 
 const props = defineProps({
   documents: {
@@ -94,13 +95,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['page-change'])
-
-// Convert number to Khmer numerals
-const convertToKhmerNumeral = (num) => {
-  const khmerNumerals = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩']
-  if (num === '...') return '...'
-  return num.toString().split('').map(digit => khmerNumerals[parseInt(digit)]).join('')
-}
 
 // Calculate row index based on current page
 const getRowIndex = (index) => {

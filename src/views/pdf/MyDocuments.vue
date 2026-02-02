@@ -62,6 +62,34 @@ const onSort = (key) => {
 }
 
 /* =======================
+   AUTHOR OPTIONS (AUTO)
+======================= */
+const authorOptions = computed(() => {
+  // Get unique creators from documents
+  const uniqueCreators = Array.from(
+    new Set(
+      documents
+        .map(d => d.creator)
+        .filter(v => v && v.trim() !== '')
+    )
+  )
+  
+  // Map to the format expected by InputSelect
+  return [
+    { value: '', name: 'ទាំងអស់', img: null },
+    ...uniqueCreators.map(creator => {
+      // Find the document to get the avatar
+      const doc = documents.find(d => d.creator === creator)
+      return {
+        value: creator,
+        name: creator,
+        img: doc?.creatorAvatar || '/female.jpeg'
+      }
+    })
+  ]
+})
+
+/* =======================
    SENT TO OPTIONS (AUTO)
 ======================= */
 const sentToOptions = computed(() => [
@@ -125,6 +153,15 @@ const filteredDocuments = computed(() => {
 
   return data
 })
+
+/* =======================
+   SEARCH HANDLER
+======================= */
+const handleSearch = () => {
+  // Filtering is handled automatically by computed property
+  // This handler is for consistency and potential future enhancements
+  // (e.g., scroll to results, show loading state, etc.)
+}
 </script>
 
 <template>
@@ -164,7 +201,10 @@ const filteredDocuments = computed(() => {
 
             <DateSelect v-model="selectedDate" />
 
-            <AuthorNameFilter v-model="selectedAuthor" />
+            <AuthorNameFilter 
+              v-model="selectedAuthor"
+              :author-options="authorOptions"
+            />
 
             <DocumentStatusFilter v-model="selectedStatus" />
 
@@ -174,7 +214,10 @@ const filteredDocuments = computed(() => {
               :options="sentToOptions"
             />
 
-            <button class="button ocm_btn_ac button-primary t-lspace">
+            <button 
+              class="button ocm_btn_ac button-primary t-lspace"
+              @click="handleSearch"
+            >
               ស្វែងរក
             </button>
           </div>
