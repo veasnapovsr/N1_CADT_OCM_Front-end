@@ -9,6 +9,18 @@ const props = defineProps({
   src: { type: String, required: true }
 })
 
+import { watch } from 'vue'
+
+// Watch for changes to src and log it
+watch(
+  () => props.src,
+  (newVal) => {
+    console.log('[PdfViewer] src prop changed:', newVal)
+    // Optionally, you can check if the URL is accessible here
+  },
+  { immediate: true }
+)
+
 /* =========================
    STATE
 ========================= */
