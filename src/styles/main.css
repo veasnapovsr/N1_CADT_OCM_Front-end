@@ -1,6 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;700&display=swap');
-/* HistoryVuePage CSS */
-@import "./historyVue.css";
 @font-face {
   font-family: 'KhmerMuol';
   src: url('../assets/fonts/KhmerMoul.woff2') format('woff2'),
@@ -854,7 +852,7 @@ body:not(.app_snav_open) .app_snav:hover{
     border: 1px solid var(--ocm-app-border);
     background: var(--ocm-app-bg);
     height: 125px;
-    width: 140px;
+    width: 160px;
     text-align: center;
     border-radius: 7px;
     display: flex;
@@ -909,7 +907,7 @@ body:not(.app_snav_open) .app_snav:hover{
   }
   .apico{
     padding: 0px 10px;
-    margin-bottom: 5px;
+    margin-bottom: 7px;
     background: #ffffff;
     border-radius: 7px;
     width: 40px;
@@ -1028,7 +1026,7 @@ body:not(.app_snav_open) .app_snav:hover{
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 30px;
+    gap: 85px;
   }
   .ocm_fbw{
     max-width: 93%;
@@ -2479,10 +2477,6 @@ border-radius: 7px 7px 0px 0px;
 overflow: hidden;
 }
 
-.flatpickr-calendar *{
-font-family: Arial, Helvetica, sans-serif !important;
-}
-
 .flatpickr-calendar.dark *,
 .flatpickr-calendar.is-calendar {
   box-shadow: none;
@@ -2498,9 +2492,12 @@ span.flatpickr-weekday,
 .flatpickr-months .flatpickr-month {    
   background-color: var(--ocm-sec-color, #e9eef5);
   color: #fff;
-  font-size: 100%;
+  font-size: 98%;
 }
-
+.flatpickr-weekdays {
+  border-top: 1px solid #ffffff24;
+  height: 30px;
+}
 .flatpickr-weekdays.dark *,
 span.flatpickr-weekday.dark *,
 .flatpickr-months .flatpickr-month.dark * {
@@ -2538,15 +2535,15 @@ span.flatpickr-weekday.dark *,
   height: 30px;
   width: 30px;
   border-radius: 5px;
-  font-size: 14px;
-  line-height: 2rem;
+  font-size: 14px;  
+  line-height: 30px;
   color: #000;
 }
 
 .flatpickr-day.today {
   border-color: transparent;
   background-color: #959ea9;
-  color: #fff;
+  color: #fff !important;
 }
 
 .flatpickr-day.dark * {
@@ -2869,4 +2866,258 @@ span.flatpickr-weekday.dark *,
 
 .bg-popover {
   background-color: var(--popover);
+}
+
+
+/* History page */
+
+.ocm_status.status-sent {
+  background-color: #10b981;
+  color: white;
+}
+
+.ocm_status.status-reject {
+  background-color: #ff686e;
+  color: white;
+}
+
+.ocm_status.status-comment {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.ocm_status.status-approve {
+  background-color: #10b981;
+  color: white;
+}
+
+.ocm_status.status-created {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.pagination_w {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.logs_pagination_bar {
+  position: sticky;
+  bottom: 0;
+  padding-top: 5px;
+  padding-bottom: 20px;
+  background-color: var(--ocm-bg);
+  z-index: 5;
+  
+}
+
+.log_time {
+  font-weight: bold;
+  color: #2563eb; 
+  margin-left: 4px;
+}
+
+/* Timeline */
+.timeline_wrap {
+  background-color: var(--ocm-app-bg);
+  border-radius: 6px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+  margin-bottom: 12px;
+}
+
+.timeline_list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.timeline_item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  position: relative;
+}
+
+.timeline_left {
+  position: relative;
+  text-align: right;
+  padding-right: 28px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.timeline_time_right {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+
+.timeline_dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  position: absolute;
+  right: 5px;
+  top: 6px;
+  box-shadow: 0 0 0 4px #eaeaea;
+}
+
+.timeline_line {
+  position: absolute;
+  right: 11px;
+  top: 24px;
+  width: 2px;
+  height: calc(100% - 20px);
+  background: linear-gradient(to bottom, #e5e7eb 0%, #d1d5db 100%);
+}
+
+.timeline_body {
+  background-color: var(--ocm-app-bg);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeline_meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.timeline_date {
+  color: #6b7280;
+}
+
+.timeline_counter {
+  margin-left: auto;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.timeline_user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline_user .jl_tbl_img img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.timeline_doc .doc_title {
+  font-weight: 500;
+  font-size: 15px;
+   display: -webkit-box;
+  -webkit-line-clamp: 2;       /* MAX 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  line-height: 1.4;
+  max-height: calc(1.4em * 2); /* safety for older browsers */
+
+}
+
+.timeline_doc .doc_ref {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.timeline_comment_box {
+  background-color: var(--ocm-bg);
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.timeline_action_line {
+  font-size: 15px;
+}
+
+.timeline_empty {
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+}
+/* Date label in timeline */
+.timeline_date_label {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+
+/* ===== FIX PDF + TITLE INLINE (SAFE OVERRIDE) ===== */
+
+/* force doc container to be horizontal */
+.timeline_doc .doc_row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+/* override global flex-column ONLY here */
+.timeline_doc .ocm_docf {
+  flex-direction: column !important; /* keep icon vertical */
+}
+
+/* keep PDF + size as ONE block */
+.timeline_doc .ocm_docfw {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* prevent text from jumping to new line */
+.timeline_doc .doc_text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Use action classes for dot color */
+.timeline_dot.status-comment { background: #3b82f6; }
+.timeline_dot.status-reject { background: #ef4444; }
+.timeline_dot.status-approve { background: #10b981; }
+.timeline_dot.status-sent { background: #0ea5e9; }
+.timeline_dot.status-created { background: #3b82f6; }
+
+@media (max-width: 768px) {
+  .timeline_item {
+    grid-template-columns: 1fr;
+  }
+  .timeline_left {
+    text-align: left;
+    padding-right: 0;
+    padding-left: 24px;
+  }
+  .timeline_dot {
+    right: auto;
+    left: 0;
+  }
+  .timeline_line {
+    right: auto;
+    left: 6px;
+  }
 }

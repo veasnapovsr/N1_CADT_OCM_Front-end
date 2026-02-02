@@ -38,8 +38,7 @@
                         dateFormat: 'd-m-Y',
                         altInput: true,
                         altFormat: 'd-m-Y',
-                        allowInput: true,
-                        minDate: new Date()
+                        allowInput: true                        
                       }"
                     />
                     <div class="prefix pre_end">

@@ -222,7 +222,7 @@ const fetchDocuments = async (page = 1) => {
       currentPage.value = pagination.value.page
     }
   } catch (err) {
-    console.error('Error fetching documents:', err)
+    // console.error('Error fetching documents:', err)
   } finally {
     isLoading.value = false
   }
