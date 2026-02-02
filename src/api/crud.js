@@ -5,7 +5,7 @@ export default {
     return await axios({
       method: 'GET' ,
       url: url ,
-      data: params ,
+      params: params ,
       headers: {
         'Authorization' : getAuthorization() // bear token
       }
@@ -15,7 +15,7 @@ export default {
     return await axios({
       method: 'GET' ,
       url: url ,
-      data: params,
+      params: params,
       headers: {
         'Authorization' : getAuthorization() // bear token
       }
