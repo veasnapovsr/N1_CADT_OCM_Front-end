@@ -1,7 +1,7 @@
 <template>
   <tr>
     <!-- INDEX -->
-    <td>{{ formatKhmerNumber(index + 1) }}</td>
+    <td>{{ formatKhmerNumber(index) }}</td>
 
     <!-- DOCUMENT INFO -->
     <td>
