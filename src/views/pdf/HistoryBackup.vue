@@ -52,11 +52,7 @@
 
       <!-- Logs Timeline -->
       <div class="timeline_wrap">
-        <div v-if="isLoading" class="ocm_dt_empt timeline_empty">
-          <div class="ocm_dti">...</div>
-          <div>កំពុងផ្ទុក</div>
-        </div>
-        <div v-else-if="filteredLogs.length === 0" class="ocm_dt_empt timeline_empty">
+        <div v-if="filteredLogs.length === 0" class="ocm_dt_empt timeline_empty">
           <div class="ocm_dti">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -102,7 +98,9 @@
 
   <!-- TIME goes here -->
   <span class="timeline_time_right">
-    {{ formatTimeKhmer(log.timestamp) }}
+    {{ formatKhmerNumber(
+      new Date(log.timestamp).toLocaleDateString('en-US', {})
+    ) }}
   </span>
   <span class="timeline_counter">
     {{ formatKhmerNumber((currentPage - 1) * itemsPerPage + index + 1) }}
@@ -187,12 +185,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, shallowRef } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useStore } from 'vuex'
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
+import { leaders } from '@/data/leader.js'
+import { documents } from '@/data/documents'
 import DateSelect from '@/components/flow/DateSelect.vue'
 import { InputSelect } from '@/components/ui/inputselect'
 import {
@@ -200,13 +199,10 @@ import {
   formatDateKhmer
 } from '@/lib/utils.js'
 
-const store = useStore()
-const router = useRouter()
 
 // Pagination
 const currentPage = ref(1)
 const itemsPerPage = ref(20)
-const isLoading = ref(false)
 
 // Filters
 const filters = ref({
@@ -215,7 +211,7 @@ const filters = ref({
   actionType: '',
   date: ''
 })
-
+// Action type dropdown options (for InputSelect)
 const actionTypeOptions = [
   { label: 'ទាំងអស់', value: '' },
   { label: 'មតិយោបល់', value: 'comment' },
@@ -224,115 +220,97 @@ const actionTypeOptions = [
   { label: 'ឯកសារបញ្ជូន', value: 'sent' },
   { label: 'បង្កើតឯកសារ', value: 'created' }
 ]
+// Mock logs data
+const logs = ref([])
 
-/** Backend status → timeline actionType */
-const statusToActionType = (status) => {
-  if (!status || status === 'draft') return 'created'
-  if (status === 'sent') return 'sent'
-  if (status === 'approved') return 'approve'
-  if (status === 'rejected') return 'reject'
-  return 'comment'
-}
+// Router
+const router = useRouter()
+// Generate mock logs data using imported data
+const generateMockLogs = () => {
+  const actionTypes = ['comment', 'reject', 'approve', 'sent', 'created']
+  const mockLogs = []
+  const now = new Date()
 
-/** Build description text from record and actionType */
-const getDescription = (r, actionType) => {
-  const sentTo = r.receivers?.length > 0
-    ? r.receivers[0].lastname + ' ' + r.receivers[0].firstname
-    : ''
-  switch (actionType) {
-    case 'created':
-      return 'បានបង្កើតឯកសារ'
-    case 'sent':
-      return sentTo ? `បានផ្ញើឯកសារទៅ ${sentTo}` : 'បានផ្ញើឯកសារ'
-    case 'approve':
-      return 'បានអនុម័តឯកសារ'
-    case 'reject':
-      return 'មិនយល់ព្រម'
-    default:
-      return 'មតិយោបល់'
-  }
-}
+  // Create logs for each document with various actions
+  documents.forEach((doc, docIndex) => {
+    // Get random leader for creator/user
+    const leader = leaders[Math.floor(Math.random() * leaders.length)]
+    
+    // Generate multiple log entries per document to simulate activity
+    const numLogsPerDoc = Math.floor(Math.random() * 3) + 1 // 1-3 logs per document
+    
+    for (let i = 0; i < numLogsPerDoc; i++) {
+      let actionType = 'created'
+      let description = ''
+      let timestamp = new Date(doc.date)
+      
+      // Determine action type based on document status and position in logs
+      if (i === 0) {
+        // First log is always creation
+        actionType = 'created'
+        description = `បានបង្កើតឯកសារ`
+        timestamp = new Date(doc.date)
+      } else if (i === 1 && doc.sentAt) {
+        // Second log could be sent
+        actionType = 'sent'
+        description = `បានផ្ញើឯកសារទៅ ${doc.sentTo}`
+        timestamp = new Date(doc.sentAt)
+      } else if (doc.status === 'approved') {
+        actionType = 'approve'
+        description = `បានអនុម័តឯកសារ`
+        timestamp = doc.sentAt ? new Date(doc.sentAt) : new Date(doc.date)
+        // Add some hours to make it after sent
+        timestamp.setHours(timestamp.getHours() + Math.floor(Math.random() * 24) + 1)
+      } else if (doc.status === 'rejected') {
+        actionType = 'reject'
+        description = `មិនយល់ព្រម`
+        timestamp = doc.sentAt ? new Date(doc.sentAt) : new Date(doc.date)
+        timestamp.setHours(timestamp.getHours() + Math.floor(Math.random() * 24) + 1)
+      } else if (doc.status === 'pending') {
+        actionType = doc.sentAt ? 'sent' : 'comment'
+        if (doc.sentAt) {
+          description = `បានផ្ញើឯកសារទៅ ${doc.sentTo}`
+        } else {
+          // Generate mock comment
+          const mockComments = [
+            'ឯកសារមានកំហុសអក្ខរាវិរុទ្ធ។ សូមកែសម្រួលឲ្យបានត្រឹមត្រូវ និងដាក់ស្នើឡើងវិញ។'
+          ]
+          description = mockComments[Math.floor(Math.random() * mockComments.length)]
+        }
+        timestamp = doc.sentAt ? new Date(doc.sentAt) : new Date(doc.date)
+      } else {
+        actionType = 'comment'
+        // Generate mock comment
+        const mockComments = [
+          'ឯកសារមានកំហុសអក្ខរាវិរុទ្ធ។ សូមកែសម្រួលឲ្យបានត្រឹមត្រូវ និងដាក់ស្នើឡើងវិញ។'
+        ]
+        description = mockComments[Math.floor(Math.random() * mockComments.length)]
+        timestamp = new Date(doc.date)
+        timestamp.setHours(timestamp.getHours() + Math.floor(Math.random() * 48))
+      }
 
-/** Map API transaction record to timeline log */
-const mapRecordToLog = (r) => {
-  const actionType = statusToActionType(r.status)
-  const userName = r.sender ? (r.sender.lastname + ' ' + r.sender.firstname) : ''
-  const userSubtitle = r.sender?.officer?.jobs?.length > 0
-    ? r.sender.officer.jobs[0].organization_structure_position?.position?.name || ''
-    : ''
-  const timestamp = r.created_at || r.sent_at || r.date_in
-  return {
-    id: r.id,
-    actionType,
-    documentId: r.id,
-    userName,
-    userSubtitle,
-    userAvatar: r.sender?.avatar_url || null,
-    documentDescription: r.subject || '',
-    documentReference: r.document?.number || '',
-    description: getDescription(r, actionType),
-    timestamp: timestamp ? (typeof timestamp === 'string' ? timestamp : new Date(timestamp).toISOString()) : new Date().toISOString()
-  }
-}
-
-const formatTimeKhmer = (value) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const timeStr = date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit'
+      // Use document creator or random leader
+      const user = doc.creator || leader.name
+      const userSubtitle = 'អនុរដ្ឋលេខាធិការ'
+      
+      
+      mockLogs.push({
+        id: mockLogs.length + 1,
+        actionType,
+        documentId: doc.id,
+        userName: user,
+        userSubtitle: userSubtitle,
+        userAvatar: doc.creatorAvatar || leader.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(user)}&background=0031c3&color=fff`,
+        documentDescription: doc.title,
+        documentReference: doc.code,
+        description,
+        timestamp: timestamp.toISOString()
+      })
+    }
   })
-  return formatKhmerNumber(timeStr)
-}
 
-// Logs from backend (shallowRef for large lists per .cursorrules)
-const logs = shallowRef([])
-
-/** Build search string for API from filters */
-const buildSearchQuery = () => {
-  const parts = []
-  if (filters.value.user && filters.value.user.trim()) parts.push(filters.value.user.trim())
-  if (filters.value.document && filters.value.document.trim()) parts.push(filters.value.document.trim())
-  return parts.join(' ')
-}
-
-/** Map filter actionType to backend status param */
-const actionTypeToStatus = (actionType) => {
-  const map = { created: 'draft', sent: 'sent', approve: 'approved', reject: 'rejected' }
-  return actionType ? (map[actionType] || '') : ''
-}
-
-/** Fetch documents/transactions from backend and set logs */
-const fetchLogs = async () => {
-  isLoading.value = true
-  try {
-    const searchQuery = buildSearchQuery()
-    const statusParam = actionTypeToStatus(filters.value.actionType)
-    const params = {
-      page: 1,
-      perPage: 500,
-      search: searchQuery,
-      status: statusParam
-    }
-    const res = await store.dispatch('transaction/list', params)
-    if (res.data && res.data.records) {
-      const mapped = res.data.records.map(mapRecordToLog)
-      mapped.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      logs.value = mapped
-    } else {
-      logs.value = []
-    }
-  } catch (err) {
-    logs.value = []
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const applyFilters = () => {
-  currentPage.value = 1
-  fetchLogs()
+  // Sort by timestamp (newest first)
+  return mockLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 }
 
 // Computed properties
@@ -361,7 +339,7 @@ const filteredLogs = computed(() => {
     result = result.filter(log => log.actionType === filters.value.actionType)
   }
 
-  // Filter by date (client-side)
+  // Filter by date
   if (filters.value.date) {
     const filterDate = new Date(filters.value.date)
     filterDate.setHours(0, 0, 0, 0)
@@ -433,7 +411,8 @@ const isNewDate = (index) => {
   )
 }
 
+// Lifecycle
 onMounted(() => {
-  fetchLogs()
+  logs.value = generateMockLogs()
 })
 </script>
