@@ -88,6 +88,12 @@ const actions = {
   async delete ({ state, commit, rootState },params) {
     return await crud.delete(import.meta.env.VITE_API_SERVER+"/"+state.model.module+'/delete',params)
   },
+  /** DELETE /authcenter/documents/transactions/destroy?id=<id> */
+  async destroy ({ state, commit, rootState }, params) {
+    const base = import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/destroy'
+    const url = params?.id != null ? base + '?' + new URLSearchParams({ id: params.id }).toString() : base
+    return await crud.delete(url, {})
+  },
   async toggleActive({state, commit, rootState}, params){
     return await crud.update(import.meta.env.VITE_API_SERVER+"/"+state.model.module+"/toggleactive",params)
   },

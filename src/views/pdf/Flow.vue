@@ -19,6 +19,7 @@ import FlowFilters from '@/components/flow/FlowFilters.vue'
 import FlowTable from '@/components/flow/FlowTable.vue'
 import FlowGrid from '@/components/flow/FlowGrid.vue'
 import RowToGrid from '@/components/flow/RowToGrid.vue'
+import DeleteConfirmPopup from '@/components/flow/DeleteConfirmPopup.vue'
 
 /* =======================
    FILTER COMPONENTS
@@ -263,6 +264,47 @@ const handlePageChange = (page) => {
 }
 
 /* =======================
+   DELETE DOCUMENT (destroy API)
+======================= */
+const isDeletingId = ref(null)
+const showDeletePopup = ref(false)
+const docToDelete = ref(null)
+
+const onDeleteRequest = (doc) => {
+  if (doc?.status === 'approved') return
+  docToDelete.value = doc
+  showDeletePopup.value = true
+}
+
+const handleDelete = async () => {
+  const doc = docToDelete.value
+  if (!doc) return
+  isDeletingId.value = doc.id
+  try {
+    await store.dispatch('transaction/destroy', { id: doc.id })
+    const idx = records.value.findIndex((r) => r.id === doc.id)
+    if (idx !== -1) records.value.splice(idx, 1)
+    if (pagination.value.totalRecords > 0) {
+      pagination.value = { ...pagination.value, totalRecords: pagination.value.totalRecords - 1 }
+    }
+    showDeletePopup.value = false
+    docToDelete.value = null
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Error deleting document:', err)
+  } finally {
+    isDeletingId.value = null
+  }
+}
+
+const closeDeletePopup = () => {
+  if (!isDeletingId.value) {
+    showDeletePopup.value = false
+    docToDelete.value = null
+  }
+}
+
+/* =======================
    HAS ACTIVE FILTERS
 ======================= */
 const hasActiveFilters = computed(() => {
@@ -431,15 +473,27 @@ const filteredDocuments = computed(() => {
             :is-loading="isLoading"
             :sort-key="sortKey"
             :sort-order="sortOrder"
+            :deleting-id="isDeletingId"
             @sort="onSort"
             @page-change="handlePageChange"
+            @delete="onDeleteRequest"
           />
 
           <!-- GRID VIEW -->
           <FlowGrid
             v-else
             :documents="filteredDocuments"
+            :deleting-id="isDeletingId"
+            @delete="onDeleteRequest"
           />
+
+        <DeleteConfirmPopup
+          v-model="showDeletePopup"
+          :document="docToDelete"
+          :loading="!!isDeletingId"
+          @confirm="handleDelete"
+          @update:model-value="closeDeletePopup"
+        />
 
         </div>
 

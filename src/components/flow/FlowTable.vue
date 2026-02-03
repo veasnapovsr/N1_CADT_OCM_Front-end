@@ -20,6 +20,8 @@
             :key="doc.id"
             :doc="doc"
             :index="getRowIndex(index)"
+            :deleting="deletingId === doc.id"
+            @delete="(d) => $emit('delete', d)"
           />
         </tbody>
       </table>
@@ -79,6 +81,7 @@ import { computed } from 'vue'
 import DocumentRow from '@/components/DocumentRow.vue'
 import { formatKhmerNumber } from '@/lib/utils'
 
+
 const props = defineProps({
   documents: {
     type: Array,
@@ -91,10 +94,22 @@ const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
+  },
+  sortKey: {
+    type: String,
+    default: ''
+  },
+  sortOrder: {
+    type: String,
+    default: 'asc'
+  },
+  deletingId: {
+    type: [Number, String],
+    default: null
   }
 })
 
-const emit = defineEmits(['page-change'])
+const emit = defineEmits(['page-change', 'delete'])
 
 // Calculate row index based on current page
 const getRowIndex = (index) => {

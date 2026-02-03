@@ -1,14 +1,18 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { documents as sourceDocs } from '@/data/documents' // ONLY for delete
 
 const props = defineProps({
   documents: {
     type: Array,
     required: true
+  },
+  deletingId: {
+    type: [Number, String],
+    default: null
   }
 })
 
+const emit = defineEmits(['delete'])
 const router = useRouter()
 
 /* ================= ACTIONS ================= */
@@ -27,9 +31,8 @@ const goToEdit = (doc) => {
 }
 
 const deleteDoc = (doc) => {
-  if (!confirm('តើអ្នកពិតជាចង់លុបឯកសារនេះមែនទេ?')) return
-  const idx = sourceDocs.findIndex(d => d.id === doc.id)
-  if (idx !== -1) sourceDocs.splice(idx, 1)
+  if (doc?.status === 'approved') return
+  emit('delete', doc)
 }
 
 /* ================= STATUS ================= */
@@ -143,7 +146,8 @@ const statusClass = (s) => ({
 
 <button
   class="row_ac_in ocm-tooltip ocm-rmac d-flex w-full px-3 py-2 gap-2 items-center hover:bg-red-50 text-red-600"
-  :class="{ 'opacity-50 pointer-events-none': doc.status === 'approved' }"
+  :class="{ 'opacity-50 pointer-events-none': doc.status === 'approved' || deletingId === doc.id }"
+  :disabled="deletingId === doc.id"
   @click.stop="deleteDoc(doc)"
 >
   <svg
