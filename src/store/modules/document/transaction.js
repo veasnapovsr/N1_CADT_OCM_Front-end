@@ -112,6 +112,10 @@ const actions = {
   async pdf ({ state, commit, rootState },params) {
     return await crud.read(import.meta.env.VITE_API_SERVER+"/"+state.model.module+"/pdf?id="+params.id)
   },
+  /** GET documents/transactions/getTotalByStatus -> { ok, records: { draft, pending, approved, rejected }, message } */
+  async getTotalByStatus ({ state, commit, rootState }) {
+    return await crud.read(import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/getTotalByStatus')
+  },
 }
 
 // mutations

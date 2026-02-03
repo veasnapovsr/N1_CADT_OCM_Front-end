@@ -31,10 +31,11 @@ import DocumentStatusFilter from '@/components/flow/DocumentStatusFilter.vue'
 import DocumentSentToFilter from '@/components/flow/DocumentSentToFilter.vue'
 
 /* =======================
-   DATAT
+   DATA
 ======================= */
 import { flowStats } from '@/data/Flowstatuscheck'
 import { documents } from '@/data/documents'
+import { formatKhmerNumber } from '@/lib/utils'
 
 const store = useStore()
 const route = useRoute()
@@ -140,6 +141,44 @@ const pagination = ref({
   search: ''
 })
 const isLoading = ref(false)
+
+/* =======================
+   STATS BY STATUS (backend getTotalByStatus)
+======================= */
+const statsByStatus = ref(null)
+
+const fetchStats = async () => {
+  try {
+    const res = await store.dispatch('transaction/getTotalByStatus')
+    if (res?.data?.ok && res?.data?.records) {
+      statsByStatus.value = res.data.records
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Error fetching stats by status:', err)
+  }
+}
+
+/** Cards synced with backend; value from getTotalByStatus or 0 while loading. */
+const flowStatsSynced = computed(() => {
+  const records = statsByStatus.value || {}
+  const total =
+    (Number(records.draft) || 0) +
+    (Number(records.pending) || 0) +
+    (Number(records.approved) || 0) +
+    (Number(records.rejected) || 0)
+  return flowStats.map((item) => {
+    const count =
+      item.statusKey === 'all'
+        ? total
+        : Number(records[item.statusKey]) || 0
+    return {
+      value: formatKhmerNumber(count),
+      label: item.label,
+      class: item.class
+    }
+  })
+})
 
 /* =======================
    FILTER + SORT LOGIC
@@ -289,6 +328,7 @@ const handleDelete = async () => {
     }
     showDeletePopup.value = false
     docToDelete.value = null
+    await fetchStats()
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Error deleting document:', err)
@@ -336,6 +376,7 @@ const handleClearFilters = () => {
 ======================= */
 onMounted(() => {
   fetchDocuments(1)
+  fetchStats()
 }) 
 
 const filteredDocuments = computed(() => {
@@ -343,10 +384,11 @@ const filteredDocuments = computed(() => {
   
   // Apply filters
   filtered = filtered.filter(doc => {
-    // Search bar: match document number (code) or creator (អ្នកបង្កើតឯកសារ)
+    // Search bar: match document title, number (code), or creator
     const searchTerm = (selectedName.value || '').trim().toLowerCase()
     const matchName =
       !searchTerm ||
+      (doc.title && doc.title.toLowerCase().includes(searchTerm)) ||
       (doc.code && doc.code.toLowerCase().includes(searchTerm)) ||
       (doc.creator && doc.creator.toLowerCase().includes(searchTerm))
 
@@ -418,7 +460,7 @@ const filteredDocuments = computed(() => {
         </div>
 
         <!-- STATS -->
-        <FlowStats :stats="flowStats" />
+        <FlowStats :stats="flowStatsSynced" />
 
         <!-- FILTER BAR -->
         <FlowFilters>
