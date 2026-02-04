@@ -260,7 +260,7 @@ const fetchDocuments = async (page = 1) => {
           size: r.document.pdf_file_size || '2MB',  
           status: r.status != null && r.status != '' ? r.status : 'draft',
           sentAt: r.sent_at,
-          sentTo: r.receivers.length <= 0 ? 'គ្មានអ្នកទទួល' : r.receivers[0].lastname + ' ' + r.receivers[0].firstname,
+          sentTo: r.receivers.length <= 0 ? 'គ្មានអ្នកទទួល' : r.receivers[0].user.lastname + ' ' + r.receivers[0].user.firstname,
           position: r.sender.officer.jobs.length <= 0 ? '' : r.sender.officer.jobs[0].organization_structure_position.position.name
         }
       })
