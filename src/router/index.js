@@ -228,18 +228,24 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.path === '/login' && isTokenValid()) {
-    // If already logged in, decide redirect based on user id
     try {
       const userRaw = localStorage.getItem('user')
       const user = userRaw ? JSON.parse(userRaw) : null
-      const userId = user?.id ? String(user.id) : ''
+      
+      const leaders = [ 
+        'prime_minister', 'deputy_minister', 'senior_minister', 'minister', 
+        'secretary_of_state', 'deputy_secretary_of_state', 
+        'general_department', 'deputy_general_department' 
+      ];
 
-      if (userId === '2901') {
-        next('/pdf/flow-dash2')
-      } else {
+      const isLeader = user?.roles?.some(role => leaders.includes(role.sub_role));
+
+      if (isLeader) {
         next('/dashboard')
+      } else {
+        next('/pdf/flow-dash2')
       }
-    } catch {
+    } catch (e) {
       next('/dashboard')
     }
     return

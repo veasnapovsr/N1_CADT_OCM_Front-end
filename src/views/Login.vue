@@ -9,7 +9,6 @@
         កម្មវិធីបរិវត្តកម្មឌីជីថលទីស្តីការគណៈរដ្ឋមន្ត្រី
       </h2>
 
-      <!-- Email -->
       <div class="input-wrapper mb-15">
         <input
           id="user_login"
@@ -21,12 +20,10 @@
           @keyup.enter="login"
         />
         <div class="prefix">
-          <!-- mail icon -->
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true" data-slot="icon" class="size-5 transition-colors duration-200"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"></path></svg>
         </div>
       </div>
 
-      <!-- Password -->
       <div class="input-wrapper mb-15">
         <input
           id="user_pass"
@@ -37,7 +34,6 @@
           @keyup.enter="login"
         />
 
-        <!-- Show / Hide Password -->
         <div class="prefix pre_end showpass" @click="togglePassword">
           <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M13.875 18.825A10.05 10.05 0 0 1 12 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 0 1 1.563-3.029m5.858.908a3 3 0 1 1 4.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0A9.97 9.97 0 0 1 12 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 0 1-4.132 5.411m0 0L21 21"></path></svg>
           <svg v-else xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="1 4 22 16"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7"></path></g></svg>
@@ -45,7 +41,6 @@
 
 
         <div class="prefix">
-          <!-- lock icon -->
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true" data-slot="icon" class="size-5 transition-colors duration-200"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"></path></svg>
         </div>
       </div>
@@ -55,7 +50,6 @@
         <label for="rememberme">ចងចាំគណនីខ្ញុំ</label>
       </p>
 
-      <!-- Login Button -->
       <button
         id="wp-submit"
         class="button button-primary button-large"
@@ -117,26 +111,6 @@ export default {
     const password = ref("")
     const showPassword = ref(false)
     const router = useRouter()
-
-    // Redirect if already logged in
-    // onMounted(() => {
-    //   const token = localStorage.getItem("token")
-    //   if (token) {
-    //     try {
-    //       const userRaw = localStorage.getItem("user")
-    //       const user = userRaw ? JSON.parse(userRaw) : null
-    //       const userId = user?.id ? String(user.id) : ""
-
-    //       if (userId === "2901") {
-    //         router.push("/pdf/flow-dash2")
-    //       } else {
-    //         router.push("/dashboard")
-    //       }
-    //     } catch {
-    //       router.push("/dashboard")
-    //     }
-    //   }
-    // })
 
     const login = async () => {
       if (!email.value || !password.value) {

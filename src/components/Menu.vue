@@ -55,22 +55,33 @@
 import { useRoute } from 'vue-router';
 import { computed } from 'vue';
 import ExpandMenu from './ExpandMenu.vue'  
-const route = useRoute();
 
-// Get user id from localStorage
-const getUserId = () => {
+const route = useRoute();
+const getUserData = () => {
   try {
     const userRaw = localStorage.getItem('user');
-    const user = userRaw ? JSON.parse(userRaw) : null;
-    return user?.id ? String(user.id) : '';
+    return userRaw ? JSON.parse(userRaw) : null;
   } catch {
-    return '';
+    return null;
   }
 };
 
-// Computed route based on user id
 const dashboardRoute = computed(() => {
-  const userId = getUserId();
-  return userId === '2901' ? '/pdf/flow-dash2' : '/pdf/flow-dash';
+  const user = getUserData();
+  if (!user || !user.roles) return '/pdf/flow-dash';
+
+  const leaders = [ 
+    'prime_minister', 
+    'deputy_minister', 
+    'senior_minister', 
+    'minister', 
+    'secretary_of_state', 
+    'deputy_secretary_of_state', 
+    'general_department', 
+    'deputy_general_department' 
+  ];
+
+  const isLeader = user.roles.some(role => leaders.includes(role.sub_role));
+  return isLeader ? '/dashboard' : '/pdf/flow-dash2';
 });
 </script>
