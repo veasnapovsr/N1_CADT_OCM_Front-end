@@ -68,10 +68,13 @@
                 @click="clickUpload"
               >
                 <svg stroke="currentColor" fill="none" viewBox="0 0 48 48" class="w-12 h-12 mx-auto text-gray-400"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-                <p>អូសនិងទម្លាក់ឯកសារនៅទីនេះ ឬចុចទីនេះ</p>
-                <input type="file" multiple ref="fileInput" @change="fileChange" hidden id="referenceDocument" />
-                <div class="list-files-upload w-full p-4" >
-                  <div class="selectedFiles w-full m-2" v-for="(pdf,index) in files" :key="index" v-html=" ( index + 1 ) + '. ' + pdf.name + ' , ទំហំ៖ ' + (pdf.size/1024/1024).toFixed(2) + ' មេកាបៃ (MB)' " ></div>
+                <p class="drop-zone-hint">អូសនិងទម្លាក់ ឬចុចទីនេះ — អាចភ្ជាប់ទាំង PDF និង Word (១ PDF + ១ Word)</p>
+                <input type="file" multiple ref="fileInput" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="fileChange" hidden id="referenceDocument" />
+                <div class="list-files-upload w-full p-4">
+                  <div class="selectedFiles w-full m-2 flex items-center gap-2 flex-wrap" v-for="(file, index) in files" :key="index">
+                    <span>{{ index + 1 }}. {{ file.name }} , ទំហំ៖ {{ (file.size / 1024 / 1024).toFixed(2) }} មេកាបៃ (MB)</span>
+                    <button type="button" class="file-remove-btn" :title="'យកចេញ ' + file.name" @click.stop="removeFile(index)">×</button>
+                  </div>
                 </div>
               </div>
               <div class="img_preview mb-20">
@@ -238,20 +241,33 @@ export default {
     }
   }
 
-  /* =====================
-     FILE UPLOAD
-  ===================== */
-  function fileChange (event) {
-    files.value = []
+  const ALLOWED_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
 
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ]
+  function isPdf (file) {
+    return file && file.type === 'application/pdf'
+  }
 
-    for (const file of event.target.files) {
-      if (!allowedTypes.includes(file.type)) {
+  function isWord (file) {
+    return file && (
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+  }
+
+  /** Add or replace: at most one PDF and one Word. New files are merged with existing. */
+  function addFiles (newFiles) {
+    if (!newFiles || !newFiles.length) return
+    const list = Array.from(newFiles)
+    const current = [...files.value]
+    let hasPdf = current.some(isPdf)
+    let hasWord = current.some(isWord)
+
+    for (const file of list) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
         notify.error({
           title: 'ឯកសារយោង',
           description: 'អនុញ្ញាតតែ PDF និង WORD',
@@ -259,7 +275,6 @@ export default {
         })
         return
       }
-
       if (file.size > 25 * 1024 * 1024) {
         notify.error({
           title: 'ឯកសារយោង',
@@ -268,9 +283,32 @@ export default {
         })
         return
       }
-
-      files.value.push(file)
+      if (isPdf(file)) {
+        if (hasPdf) current.splice(current.findIndex(isPdf), 1)
+        current.push(file)
+        hasPdf = true
+      } else if (isWord(file)) {
+        if (hasWord) current.splice(current.findIndex(isWord), 1)
+        current.push(file)
+        hasWord = true
+      }
     }
+    files.value = current
+  }
+
+  function fileChange (event) {
+    const input = event.target
+    addFiles(input.files || [])
+    input.value = ''
+  }
+
+  function handleDrop (event) {
+    event.preventDefault()
+    addFiles(event.dataTransfer?.files || [])
+  }
+
+  function removeFile (index) {
+    files.value = files.value.filter((_, i) => i !== index)
   }
 
   function clickUpload () {
@@ -330,7 +368,9 @@ export default {
     save,
     fileChange,
     clickUpload,
-    handleInput
+    handleInput,
+    handleDrop,
+    removeFile
   }
 }
 };
@@ -356,6 +396,32 @@ export default {
 }
 .drop-zone svg{
   width: 50px;
+}
+.drop-zone-hint {
+  margin: 0;
+  font-size: 14px;
+}
+.list-files-upload .selectedFiles {
+  min-height: 2rem;
+}
+.file-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.file-remove-btn:hover {
+  background: #fca5a5;
+  color: #b91c1c;
 }
 .img_preview{
   display: flex;
