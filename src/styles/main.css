@@ -606,7 +606,7 @@ body:not(.app_snav_open) .app_snav:hover{
   height: 100%;
 }
 .input-wrapper .prefix svg {
-  width: 1.2em;
+  height: 1.2em;
   opacity: .6;
 }
 .input-wrapper .pre_end{
@@ -762,7 +762,8 @@ body:not(.app_snav_open) .app_snav:hover{
     gap: 5px;
     align-items: center;
     font-size: 14px;
-    line-height: 1.2;
+    line-height: 1.5;
+    letter-spacing: 0;
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
@@ -2242,6 +2243,9 @@ body:not(.ocm_dark_skin) .ocm_bfw .ocm_caw:hover .ocm_icard{
   font-size: 95%;
 }
 .fs-90{
+  font-size: 90%;
+}
+.fs-85{
   font-size: 85%;
 }
 .ellip-2{

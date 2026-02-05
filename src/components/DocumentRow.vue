@@ -33,7 +33,7 @@
           <img :src="doc.creatorAvatar" alt="creator" />
         </span>
         <span class="jl_tbl_c">
-          <span class="tb_n1 bold fs-95">{{ doc.creator }}</span>
+          <span class="tb_n1 bold">{{ doc.creator }}</span>
           <span class="tb_n1 fs-90">{{ doc.position }}</span>
         </span>
       </span>
@@ -41,7 +41,10 @@
 
     <!-- DATE -->
     <td>
-      {{ formatDateKhmer(doc.date) }}
+      <span class="jl_tbl_c">
+        <span>{{ formatDateKhmer(doc.date) }}</span>
+        <span class="tb_n1 fs-90">ម៉ោង: {{ formatKhmerNumber(doc.time) }}</span>
+      </span>        
     </td>
 
     <!-- SENT TO + TIME AGO -->

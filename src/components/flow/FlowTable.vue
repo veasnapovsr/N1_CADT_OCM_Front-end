@@ -7,7 +7,7 @@
             <th class="t-lspace" style=" width: 40px; ">#</th>
             <th class="t-lspace">ឯកសារ</th>
             <th class="t-lspace" style=" width: 230px; ">អ្នកបង្កើតឯកសារ</th>
-            <th class="t-lspace" style=" width: 130px; ">កាលបរិច្ឆេទ</th>
+            <th class="t-lspace" style=" width: 140px; ">កាលបរិច្ឆេទ</th>
             <th class="t-lspace" style=" width: 180px; ">ឯកសារបញ្ជូនដល់​</th>             
             <th class="t-lspace" style=" width: 110px; ">ស្ថានភាព</th>
             <th class="t-lspace">សកម្មភាព</th>

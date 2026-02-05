@@ -247,6 +247,8 @@ const fetchDocuments = async (page = 1) => {
     }
     
     const res = await store.dispatch('transaction/list', params)
+
+    console.log(res);
     
     if (res.data && res.data.records) {
       records.value = res.data.records.map((r) => {
@@ -255,6 +257,12 @@ const fetchDocuments = async (page = 1) => {
           title: r.subject,
           code: r.document.number,
           date: r.date_in,
+          time: r.created_at ? new Date(r.created_at).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+          }) : '',
+          countesy: r.date_in,
           creator: r.sender.lastname + ' ' + r.sender.firstname,
           creatorAvatar: r.sender?.avatar_url || '/female.jpeg',
           size: r.document.pdf_file_size || '2MB',  
