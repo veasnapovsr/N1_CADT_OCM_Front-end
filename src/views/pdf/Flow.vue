@@ -248,28 +248,36 @@ const fetchDocuments = async (page = 1) => {
     
     const res = await store.dispatch('transaction/list', params)
 
-    console.log(res);
-    
     if (res.data && res.data.records) {
       records.value = res.data.records.map((r) => {
+        const jobs = r.sender?.officer?.jobs
+        const position = jobs?.length
+          ? jobs[0]?.organization_structure_position?.position?.name
+          : ''
         return {
           id: r.id,
           title: r.subject,
-          code: r.document.number,
+          code: r.document?.number,
           date: r.date_in,
-          time: r.created_at ? new Date(r.created_at).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+          time: r.created_at ? new Date(r.created_at).toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
-            hour12: true 
+            hour12: true
           }) : '',
           countesy: r.date_in,
-          creator: r.sender.lastname + ' ' + r.sender.firstname,
+          creator: [
+            r.sender?.countesy_name,
+            r.sender?.lastname && r.sender?.firstname
+              ? `${r.sender.lastname} ${r.sender.firstname}`
+              : r.sender?.fullname || ''
+          ].filter(Boolean).join(' '),
           creatorAvatar: r.sender?.avatar_url || '/female.jpeg',
-          size: r.document.pdf_file_size || '2MB',  
-          status: r.status != null && r.status != '' ? r.status : 'draft',
+          thumbnailUrl: r.document?.pdf_thumbnail || '',
+          size: r.document?.pdf_file_size || '2MB',
+          status: r.status != null && r.status !== '' ? r.status : 'draft',
           sentAt: r.sent_at,
-          sentTo: r.receivers.length <= 0 ? 'គ្មានអ្នកទទួល' : r.receivers.map( r => r.user.fullname ).join(', ') ,
-          position: r.sender.officer.jobs.length <= 0 ? '' : r.sender.officer.jobs[0].organization_structure_position.position.name
+          sentTo: !r.receivers?.length ? 'គ្មានអ្នកទទួល' : r.receivers.map((rev) => rev.user?.fullname).filter(Boolean).join(', '),
+          position
         }
       })
     }

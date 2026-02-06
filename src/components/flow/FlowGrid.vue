@@ -167,11 +167,12 @@ const statusClass = (s) => ({
             </div>
           </div>
 
-          <!-- PDF PREVIEW -->
+          <!-- PDF PREVIEW (backend pdf_thumbnail with fallback) -->
           <img
-            src="/src/assets/pdf-preview3.png"
+            :src="doc.thumbnailUrl || '/src/assets/pdf-preview3.png'"
             alt="preview"
             class="h-full object-contain p-4"
+            @error="(e) => { e.target.src = '/src/assets/pdf-preview3.png' }"
           />
         </div>
 
