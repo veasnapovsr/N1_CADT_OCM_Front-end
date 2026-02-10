@@ -1,16 +1,22 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
 
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
 import FlowDashboardChart from '@/components/FlowDashboardChart.vue'
+import FlowStats from '@/components/flow/FlowStatus.vue'
+import { flowStats } from '@/data/Flowstatuscheck'
+import { formatKhmerNumber } from '@/lib/utils'
 import { documents } from '@/data/documents'
 
 import { FlatPickr } from '@/components/ui/flat-pickr'
 import { InputSelect } from '@/components/ui/inputselect'
 import { leaders } from '@/data/leader'
+
+const store = useStore()
 
 // ---------------- Router ----------------
 const router = useRouter()
@@ -113,6 +119,44 @@ const ministries = [
   { value: '2', label: 'ទីស្តីការគណៈរដ្ឋមន្ត្រី' },
   { value: '5', label: 'ក្រសួង ពាណិជ្ជកម្ម' }
 ]
+
+const statsByStatus = ref(null)
+
+const fetchStats = async () => {
+  try {
+    const res = await store.dispatch('transaction/getTotalByStatus')
+    if (res?.data?.ok && res?.data?.records) {
+      statsByStatus.value = res.data.records
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Error fetching stats by status:', err)
+  }
+}
+
+const flowStatsSynced = computed(() => {
+  const records = statsByStatus.value || {}
+  const total =
+    (Number(records.draft) || 0) +
+    (Number(records.pending) || 0) +
+    (Number(records.approved) || 0) +
+    (Number(records.rejected) || 0)
+  return flowStats.map((item) => {
+    const count =
+      item.statusKey === 'all'
+        ? total
+        : Number(records[item.statusKey]) || 0
+    return {
+      value: formatKhmerNumber(count),
+      label: item.label,
+      class: item.class
+    }
+  })
+})
+
+onMounted(() => {
+  fetchStats()
+})
 </script>
 
 
@@ -128,65 +172,7 @@ const ministries = [
 				</div>
 				<div class="ocm_dashboard_splits">
 					<div>
-						<div class="ocm_bfw ocm_stat">
-					<div class="ocm_caw noneh status_wait">
-						<div class="ocm_card_body">
-							<div class="ocm_icardw">
-							<h5 class="ocm_card_value">១១</h5>
-							<div class="ocm_icard">
-								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
-							</div>			
-							</div>
-							<p class="ocm_card_title">លំហូរឯកសារមិនទាន់អនុម័ត</p>
-						</div>
-					</div>
-					<div class="ocm_caw noneh status_accept">
-						<div class="ocm_card_body">
-						<div class="ocm_icardw">	
-						<h5 class="ocm_card_value">៤</h5>
-						<div class="ocm_icard">
-							<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
-						</div>			
-						</div>
-							<p class="ocm_card_title">លំហូរឯកសារអនុម័តរួច</p>
-						</div>
-					</div>
-					<div class="ocm_caw noneh status_all">
-						<div class="ocm_card_body">
-							<div class="ocm_icardw">
-							<h5 class="ocm_card_value">២៧</h5>
-							<div class="ocm_icard">
-								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
-							</div>			
-							</div>
-							<p class="ocm_card_title">លំហូរឯកសារទាំងអស់</p>
-						</div>
-					</div>
-					<div class="ocm_caw noneh status_draft">
-						<div class="ocm_card_body">
-							<div class="ocm_icardw">
-							<h5 class="ocm_card_value">២</h5>
-							<div class="ocm_icard">
-								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
-							</div>			
-							</div>
-							<p class="ocm_card_title">លំហូរឯកសារព្រាង</p>
-						</div>
-					</div>
-					<div class="ocm_caw noneh status_decline">
-						<div class="ocm_card_body">
-						<div class="ocm_icardw">
-						<h5 class="ocm_card_value">២</h5>
-							<div class="ocm_icard">
-								<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="4 2 16 20"><g fill="none"><path d="M12 8V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10h-6a2 2 0 0 1-2-2zm-5 4.25a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm0 3a.75.75 0 1 1 1.5 0a.75.75 0 0 1-1.5 0zm3-6a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zm0 3a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75zM13.5 8V2.5l6 6H14a.5.5 0 0 1-.5-.5z" fill="currentColor"></path></g></svg>
-							</div>			
-							</div>
-							<p class="ocm_card_title">លំហូរឯកសារមិនយល់ព្រម</p>
-						</div>
-					</div>
-						</div>
-
-
+						<FlowStats :stats="flowStatsSynced" />
 
             <div class="ocmopt-col cols2 mb-30">
   <div class="ocm_card ocm_doc_fr">
