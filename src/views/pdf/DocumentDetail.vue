@@ -17,12 +17,23 @@
               <!-- Heading Area -->
               <div class="ocm_cwr">
                 <h2 class="h doc-heading t-lspace flex justify-between items-start gap-4">
-                  <!-- Title allowed to wrap to 2 lines -->
-                  <span class="flex-1 leading-snug break-words line-clamp-2">
-                    {{ documentTransaction?.document?.objective || documentTransaction?.document?.title || 'ឯកសារយោង' }}
-                    <span v-if="comparePdfSrc" class="text-red-500 text-sm block md:inline font-bold"> (ប្រៀបធៀបឯកសារ)</span>
-                  </span>
-                  
+                  <div class="flex-1 min-w-0">
+                    <!-- Title allowed to wrap to 2 lines -->
+                    <span class="block leading-snug break-words line-clamp-2">
+                      {{ documentTransaction?.document?.objective || documentTransaction?.document?.title || 'ឯកសារយោង' }}
+                      <span v-if="comparePdfSrc" class="text-red-500 text-sm block md:inline font-bold"> (ប្រៀបធៀបឯកសារ)</span>
+                    </span>
+                    <!-- Creator and date/time under title (same line) -->
+                    <div v-if="documentTransaction && (creatorName || documentDateTime)" class="font-khmer text-sm text-gray-600 mt-1">
+                      <span v-if="creatorName">
+                        អ្នកបង្កើតឯកសារ :
+                        <span class="font-khmer font-bold text-gray-900">{{ creatorName }}</span>
+                      </span>
+                      <span v-if="creatorName && documentDateTime"> · </span>
+                      <span v-if="documentDateTime" class="font-light text-blue-600">{{ documentDateTime }}</span>
+                    </div>
+                  </div>
+
                   <div class="flex gap-2 shrink-0">
                     <!-- Manual Upload / Close Toggle Button -->
                     <input type="file" ref="fileInput" class="hidden" accept="application/pdf" @change="handleFileSelect" />
@@ -98,6 +109,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRoute } from 'vue-router'
+import { formatKhmerNumber, formatDateKhmer } from '@/lib/utils'
 
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
@@ -117,6 +129,48 @@ const documentTransactionId = ref(Number(route.params.id) || 0)
 const wordFileUrl = computed(() => {
   const url = documentTransaction.value?.document?.word_file
   return url && typeof url === 'string' && url.trim() ? url.trim() : null
+})
+
+const creatorName = computed(() => {
+  const s = documentTransaction.value?.sender
+  if (!s) return ''
+  const parts = [
+    s.countesy_name,
+    s.lastname && s.firstname ? `${s.lastname} ${s.firstname}` : s.fullname || ''
+  ].filter(Boolean)
+  return parts.join(' ')
+})
+
+const documentDateTime = computed(() => {
+  const dateSource =
+    documentTransaction.value?.date_in ||
+    documentTransaction.value?.created_at ||
+    documentTransaction.value?.sent_at
+
+  if (!dateSource) return ''
+
+  // Date part (match Flow: "០៥ កុម្ភៈ ២០២៦")
+  const dateObj = new Date(dateSource)
+  const dateStr = Number.isNaN(dateObj.getTime())
+    ? formatKhmerNumber(String(dateSource).trim())
+    : formatDateKhmer(dateSource)
+
+  // Time part (match Flow: "ម៉ោង: ១០:៣០ AM")
+  const timeSource =
+    documentTransaction.value?.created_at || documentTransaction.value?.sent_at
+  if (!timeSource) return dateStr
+
+  const timeObj = new Date(timeSource)
+  if (Number.isNaN(timeObj.getTime())) return dateStr
+
+  const timeStr = timeObj.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  })
+
+  const timeKh = timeStr ? formatKhmerNumber(timeStr) : ''
+  return timeKh ? `${dateStr} ${timeKh}` : dateStr
 })
 
 // Process shared logic for file handling
