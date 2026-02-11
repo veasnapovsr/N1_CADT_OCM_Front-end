@@ -158,8 +158,8 @@ export default {
 
   const submitted = ref(false)
   const isSubmitting = ref(false)
+  const isUploading = ref(false)
 
-  // 🔴 validation errors
   const errors = ref({})
 
   /* =====================
@@ -223,7 +223,7 @@ export default {
           duration: 2000
         })
 
-        uploadFiles(res.data.record)
+        await uploadFiles(res.data.record)
       }
     } catch (err) {
       submitted.value = false
@@ -315,42 +315,109 @@ export default {
     document.getElementById('referenceDocument').click()
   }
 
-  function uploadFiles (record) {
-    const formData = new FormData()
+  async function uploadFiles (record) {
+    if (isUploading.value) {
+      return
+    }
 
-    files.value.forEach(file => {
-      formData.append('files[]', file)
-    })
+    if (!record || !record.document_id) {
+      notify.error({
+        title: 'ឯកសារយោង',
+        description: 'មិនមាន document_id',
+        duration: 3000
+      })
+      return
+    }
 
-    formData.append('document_id', record.document_id)
-    formData.append('objective', form.objective)
-    formData.append('number', form.number)
-    formData.append('date_in', form.startDate)
-    formData.append('document_type', form.documentType)
+    const pdfFile = files.value.find(isPdf)
+    const wordFile = files.value.find(isWord)
 
+    if (!pdfFile && !wordFile) {
+      return 
+    }
+
+    isUploading.value = true
+
+    try {
     notify.info({
       title: 'ឯកសារយោង',
       description: 'កំពុងភ្ជាប់ឯកសារយោង...',
       duration: 2000
     })
 
-    store.dispatch('transaction/uploadFiles', formData)
-      .then(() => {
-        notify.success({
-          title: 'ឯកសារយោង',
-          description: 'បានភ្ជាប់ឯកសារយោងរួចរាល់។',
-          duration: 3000
-        })
-        files.value = []
+    let pdfOk = false
+    let wordOk = false
+
+    function handleUploadError (err) {
+      const errorMessage = err?.response?.data?.message ||
+                        err?.response?.data?.error ||
+                        err?.message ||
+                        'មានបញ្ហាភ្ជាប់ឯកសារយោង'
+      const isFlysystemError = errorMessage && (
+        errorMessage.includes('Flysystem') ||
+        errorMessage.includes('Filesystem::has()') ||
+        errorMessage.includes('must be of type string, null given')
+      )
+      return { errorMessage, isFlysystemError }
+    }
+
+    // endpoind: upload/pdf 
+    if (pdfFile) {
+      try {
+        const pdfFormData = new FormData()
+        pdfFormData.append('pdf_file', pdfFile)
+        pdfFormData.append('document_id', String(record.document_id))
+        await store.dispatch('transaction/uploadPdf', pdfFormData)
+        pdfOk = true
+      } catch (err) {
+        console.error('PDF upload error:', err)
+        const { errorMessage, isFlysystemError } = handleUploadError(err)
+        if (isFlysystemError) {
+          pdfOk = true 
+        } else {
+          notify.error({
+            title: 'ឯកសារយោង (PDF)',
+            description: errorMessage,
+            duration: 3000
+          })
+        }
+      }
+    }
+
+    // endpoint: upload/word 
+    if (wordFile) {
+      try {
+        const wordFormData = new FormData()
+        wordFormData.append('word_file', wordFile)
+        wordFormData.append('document_id', String(record.document_id))
+        await store.dispatch('transaction/uploadWord', wordFormData)
+        wordOk = true
+      } catch (err) {
+        console.error('Word upload error:', err)
+        const { errorMessage, isFlysystemError } = handleUploadError(err)
+        if (isFlysystemError) {
+          wordOk = true 
+        } else {
+          notify.error({
+            title: 'ឯកសារយោង (Word)',
+            description: errorMessage,
+            duration: 3000
+          })
+        }
+      }
+    }
+
+    if (pdfOk || wordOk) {
+      notify.success({
+        title: 'ឯកសារយោង',
+        description: 'បានភ្ជាប់ឯកសារយោងរួចរាល់។',
+        duration: 3000
       })
-      .catch(err => {
-        console.error(err)
-        notify.error({
-          title: 'ឯកសារយោង',
-          description: 'មានបញ្ហាភ្ជាប់ឯកសារយោង',
-          duration: 3000
-        })
-      })
+      files.value = []
+    }
+    } finally {
+      isUploading.value = false
+    }
   }
 
   function handleInput () {}
