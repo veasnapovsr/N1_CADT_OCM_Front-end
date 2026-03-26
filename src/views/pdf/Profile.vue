@@ -13,18 +13,29 @@
   <!-- Avatar -->
   <div class="relative shrink-0 w-20 h-20">
     <img
-      :src="user.avatar_url || 'https://ui-avatars.com/api/?name=' + user.firstname + '+' + user.lastname"
+      :src="profileImageSrc"
       class="w-20 h-20 object-cover rounded-full border-4 border-white shadow"
       alt="Profile"
     />
 
+    <input
+      ref="photoInputRef"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="handleProfilePhotoSelected"
+    />
+
     <!-- Edit Photo Icon -->
     <button
+      type="button"
       class="absolute -bottom-1 -right-1
             w-7 h-7 rounded-full
             bg-blue-600 text-white
             flex items-center justify-center
             shadow hover:bg-blue-700 transition"
+      :disabled="isUploadingPhoto"
+      @click="triggerPhotoPicker"
     >
       <!-- Camera icon -->
       <svg xmlns="http://www.w3.org/2000/svg"
@@ -65,9 +76,10 @@
     <button
   type="button"
   class="button ocm_btn_ac button-primary t-lspace ml-auto"
-  @click="isEditing = !isEditing"
+  :disabled="isSaving"
+  @click="handleProfileAction"
 >
-  {{ isEditing ? 'រក្សាទុក' : 'កែប្រែព័ត៌មាន' }}
+  {{ isSaving ? 'កំពុងរក្សាទុក...' : isEditing ? 'រក្សាទុក' : 'កែប្រែព័ត៌មាន' }}
 </button>
 
   </div>
@@ -89,7 +101,10 @@
         <p v-if="!isEditing" class="font-khmer">{{ user.lastname }}</p>
         <input v-else v-model="user.lastname" 
           type="text"
-        class="border rounded px-4 py-3 w-full text-lg"/>
+        class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
+        />
       </div>
       
       <div>
@@ -100,22 +115,26 @@
   v-else
   v-model="user.firstname"
        type="text"
-  class="border rounded px-4 py-3 w-full text-lg"
+   class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
 />
 
       </div>
 
       <div>
         <p class="font-khmer font-bold">តួនាទី</p>
-       <p v-if="!isEditing" 
-       class="font-khmer">{{ user.position.name }}</p>
+        <p v-if="!isEditing" 
+        class="font-khmer">{{ user.people.position }}</p>
 <input
   v-else
-  v-model="user.position.name"
-       type="text"
-  class="border rounded px-4 py-3 w-full text-lg"
+  v-model="user.people.position"
+  type="text"
+  class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
 />
-</div>
+      </div>
       <div>
         <p class="font-khmer font-bold">ត្រកូល (អង់គ្លេស)</p>
         <p v-if="!isEditing" class="font-khmer">{{ user.people.enlastname }}</p>
@@ -123,7 +142,9 @@
           v-else
           v-model="user.people.enlastname"
           type="text"
-          class="border rounded px-4 py-3 w-full text-lg"
+           class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
           />
         </div>
 
@@ -134,7 +155,9 @@
           v-else
           v-model="user.people.enfirstname"
           type="text"
-          class="border rounded w-full text-lg"
+          class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
         />
       </div>
 
@@ -148,7 +171,9 @@
   v-else
   v-model="user.people.email"
   type="email"
-  class="border rounded px-4 py-3 w-full text-lg"
+  class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
 />
       </div>
       <div>
@@ -158,7 +183,9 @@
           v-else
           v-model="user.people.office_phone"
           type="tel"
-          class="border rounded px-4 py-3 w-full text-lg"
+          class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+         focus:outline-none focus:ring-2 focus:ring-blue-500
+         focus:border-blue-500 transition"
         />
       </div>
 
@@ -178,7 +205,7 @@
   </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-10 text-sm">
         <div>
-          <p class="font-khmer font-bold">នៅលីវ ឬ រៀបការរួច</p>
+          <p class="font-khmer font-bold">អាសយដ្ឋាន</p>
          <p v-if="!isEditing" class="font-khmer">
   {{ user.people.address || 'មិនមានទិន្នន័យ' }}
 </p>
@@ -225,7 +252,22 @@
         <div>
   <p class="font-khmer font-bold mb-2">ស្ថានភាពគ្រួសារ</p>
 
- <div class="flex items-center gap-8 text-sm font-khmer">
+  <div v-if="isEditing" class="flex flex-wrap items-center gap-6 text-sm font-khmer">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input v-model="user.people.marry_status" type="radio" value="single" />
+      <span>នៅលីវ</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input v-model="user.people.marry_status" type="radio" value="married" />
+      <span>រៀបការរួច</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input v-model="user.people.marry_status" type="radio" value="other" />
+      <span>ផ្សេងៗ</span>
+    </label>
+  </div>
+
+ <div v-else class="flex items-center gap-8 text-sm font-khmer">
 
   <!-- Single -->
   <label class="flex items-center gap-2">
@@ -307,44 +349,429 @@
 
 <script setup>
 
-import { ref, onMounted, watch } from 'vue'
+import axios from 'axios'
+import { computed, ref, onMounted } from 'vue'
+import { toast } from 'vue-sonner'
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
 import Footer from '@/components/Footer.vue'
+import { authLogout, getAuthorization, getUser, setUser } from '@/plugins/authentication'
 
 
-const user = ref({
-  avatar_url: '',
-  firstname: '',
-  lastname: '',
-  countesy: { name: '' },
-  people: {
-    enfirstname: '',
-    enlastname: '',
-    gender: '',
-    dob: '',
-    email: '',
-    office_phone: '',
-    mobile_phone: '',
-    address: '',
-    marry_status: ''
-  },
-  position: { name: '' },
-  organization: { name: '' }
+function createEmptyUser() {
+  return {
+    id: '',
+    avatar_url: '',
+    firstname: '',
+    lastname: '',
+    countesy: { name: '' },
+    people: {
+      id: '',
+      enfirstname: '',
+      enlastname: '',
+      gender: '',
+      dob: '',
+      email: '',
+      office_phone: '',
+      mobile_phone: '',
+      address: '',
+      marry_status: 'single'
+    },
+    position: { name: '' },
+    organization: { name: '' }
+  }
+}
+
+function cloneDeep(value) {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function normalizeUser(storedUser = {}) {
+  const emptyUser = createEmptyUser()
+
+  return {
+    ...emptyUser,
+    ...storedUser,
+    countesy: {
+      ...emptyUser.countesy,
+      ...(storedUser.countesy || {})
+    },
+    people: {
+      ...emptyUser.people,
+      ...(storedUser.people || {})
+    },
+    position: {
+      ...emptyUser.position,
+      ...(storedUser.position || {})
+    },
+    organization: {
+      ...emptyUser.organization,
+      ...(storedUser.organization || {})
+    }
+  }
+}
+
+const API_SERVER = (import.meta.env.VITE_API_SERVER || '').replace(/\/$/, '')
+const API_BASE_URL = API_SERVER.replace(/\/api\/authcenter$/i, '')
+const user = ref(createEmptyUser())
+const originalUser = ref(createEmptyUser())
+const isEditing = ref(false)
+const isSaving = ref(false)
+const isUploadingPhoto = ref(false)
+const photoInputRef = ref(null)
+
+const resolveAvatarUrl = (value) => {
+  const source = typeof value === 'string' ? value.trim() : ''
+
+  if (!source) {
+    return ''
+  }
+
+  if (
+    source.startsWith('http://') ||
+    source.startsWith('https://') ||
+    source.startsWith('data:') ||
+    source.startsWith('blob:')
+  ) {
+    return source
+  }
+
+  if (source.startsWith('/storage/')) {
+    return `${API_BASE_URL}${source}`
+  }
+
+  if (source.startsWith('storage/')) {
+    return `${API_BASE_URL}/${source}`
+  }
+
+  if (source.startsWith('/')) {
+    return `${API_BASE_URL}${source}`
+  }
+
+  return `${API_BASE_URL}/storage/${source.replace(/^storage\//, '')}`
+}
+
+const profileImageSrc = computed(() => {
+  return (
+    resolveAvatarUrl(user.value.avatar_url) ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(`${user.value.firstname || ''} ${user.value.lastname || ''}`.trim())}`
+  )
 })
+
+const getRequestHeaders = () => ({
+  Authorization: getAuthorization(),
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+  'X-Requested-With': 'XMLHttpRequest'
+})
+
+const syncStoredUser = (nextUser) => {
+  const normalized = normalizeUser(nextUser)
+  user.value = normalized
+  originalUser.value = cloneDeep(normalized)
+  setUser(normalized)
+}
+
+const buildUserPayload = () => ({
+  id: user.value.id || undefined,
+  firstname: user.value.firstname || '',
+  lastname: user.value.lastname || ''
+})
+
+const toInteger = (value, fallback = 0) => {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) ? parsed : fallback
+}
+
+const buildPeoplePayload = () => {
+  const currentPeople = user.value.people || {}
+  const originalPeople = originalUser.value.people || {}
+
+  return {
+    ...originalPeople,
+    ...currentPeople,
+    id: currentPeople.id || originalPeople.id || undefined,
+    user_id: user.value.id || originalUser.value.id || undefined,
+    firstname: user.value.firstname || originalPeople.firstname || '',
+    lastname: user.value.lastname || originalPeople.lastname || '',
+    enfirstname: currentPeople.enfirstname || '',
+    enlastname: currentPeople.enlastname || '',
+    gender: currentPeople.gender || originalPeople.gender || 1,
+    dob: currentPeople.dob || '',
+    email: currentPeople.email || '',
+    office_phone: currentPeople.office_phone || '',
+    mobile_phone: currentPeople.mobile_phone || '',
+    address: currentPeople.address || '',
+    marry_status: currentPeople.marry_status || 'single',
+    nid: currentPeople.nid || originalPeople.nid || '',
+    pob: currentPeople.pob || originalPeople.pob || '',
+    current_address: currentPeople.current_address || originalPeople.current_address || '',
+    address_province_id: toInteger(currentPeople.address_province_id ?? originalPeople.address_province_id),
+    address_district_id: toInteger(currentPeople.address_district_id ?? originalPeople.address_district_id),
+    address_commune_id: toInteger(currentPeople.address_commune_id ?? originalPeople.address_commune_id),
+    address_village_id: toInteger(currentPeople.address_village_id ?? originalPeople.address_village_id),
+    current_address_province_id: toInteger(currentPeople.current_address_province_id ?? originalPeople.current_address_province_id),
+    current_address_district_id: toInteger(currentPeople.current_address_district_id ?? originalPeople.current_address_district_id),
+    current_address_commune_id: toInteger(currentPeople.current_address_commune_id ?? originalPeople.current_address_commune_id),
+    current_address_village_id: toInteger(currentPeople.current_address_village_id ?? originalPeople.current_address_village_id),
+    pob_province_id: toInteger(currentPeople.pob_province_id ?? originalPeople.pob_province_id),
+    pob_district_id: toInteger(currentPeople.pob_district_id ?? originalPeople.pob_district_id),
+    pob_commune_id: toInteger(currentPeople.pob_commune_id ?? originalPeople.pob_commune_id),
+    pob_village_id: toInteger(currentPeople.pob_village_id ?? originalPeople.pob_village_id)
+  }
+}
+
+const validateProfile = () => {
+  if (!user.value.lastname?.trim() || !user.value.firstname?.trim()) {
+    return 'សូមបំពេញគោត្តនាម និងឈ្មោះ។'
+  }
+
+  if (user.value.people.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.people.email)) {
+    return 'អ៊ីមែលមិនត្រឹមត្រូវទេ។'
+  }
+
+  return ''
+}
+
+const extractResponseRecord = (response) => {
+  return response?.data?.record || response?.data?.data || {}
+}
+
+const extractUploadedAvatarUrl = (response) => {
+  const data = response?.data || {}
+  const record = data?.record || data?.data || {}
+
+  return resolveAvatarUrl(
+    record?.avatar_url ||
+    record?.image_url ||
+    record?.photo_url ||
+    record?.url ||
+    data?.avatar_url ||
+    data?.image_url ||
+    data?.photo_url ||
+    data?.url ||
+    record?.avatar ||
+    record?.image ||
+    record?.photo ||
+    data?.avatar ||
+    data?.image ||
+    data?.photo ||
+    ''
+  )
+}
+
+const updateWithFallback = async (endpoints, payload, retryStatuses = [404]) => {
+  let lastError = null
+
+  for (const endpoint of endpoints) {
+    try {
+      return await axios.put(endpoint, payload, {
+        headers: getRequestHeaders()
+      })
+    } catch (error) {
+      lastError = error
+
+      if (!retryStatuses.includes(error?.response?.status)) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError || new Error('Unable to update profile')
+}
+
+const uploadWithFallback = async (endpoints, formData, retryStatuses = [404]) => {
+  let lastError = null
+
+  for (const endpoint of endpoints) {
+    try {
+      return await axios.post(endpoint, formData, {
+        headers: {
+          Authorization: getAuthorization(),
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+    } catch (error) {
+      lastError = error
+
+      if (!retryStatuses.includes(error?.response?.status)) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError || new Error('Unable to upload profile photo')
+}
+
+const createProfilePhotoFormData = (file, fieldName) => {
+  const formData = new FormData()
+  formData.append(fieldName, file, file.name || 'profile-photo')
+
+  if (user.value.id) {
+    formData.append('id', String(user.value.id))
+    formData.append('user_id', String(user.value.id))
+  }
+
+  return formData
+}
+
+const uploadProfilePhoto = async (file) => {
+  const endpoint = `${API_SERVER}/users/profile/photo/change`
+  const fieldNames = ['image', 'photo', 'avatar']
+  let lastError = null
+
+  for (const fieldName of fieldNames) {
+    try {
+      return await uploadWithFallback([
+        endpoint
+      ], createProfilePhotoFormData(file, fieldName), [400, 404, 415, 422, 500])
+    } catch (error) {
+      lastError = error
+
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError || new Error('Unable to upload profile photo')
+}
+
+const triggerPhotoPicker = () => {
+  photoInputRef.value?.click()
+}
+
+const handleProfilePhotoSelected = async (event) => {
+  const [file] = Array.from(event?.target?.files || [])
+
+  if (!file) {
+    return
+  }
+
+  if (!file.type.startsWith('image/')) {
+    toast.error('សូមជ្រើសរើសតែឯកសាររូបភាពប៉ុណ្ណោះ។')
+    event.target.value = ''
+    return
+  }
+
+  if (!getAuthorization()) {
+    authLogout()
+    toast.error('សម័យចូលប្រព័ន្ធផុតកំណត់', {
+      description: 'សូមចូលប្រព័ន្ធម្ដងទៀត។'
+    })
+    event.target.value = ''
+    return
+  }
+
+  isUploadingPhoto.value = true
+
+  try {
+    const response = await uploadProfilePhoto(file)
+
+    const latestStoredUser = getUser() || {}
+    const responseRecord = extractResponseRecord(response)
+    const uploadedAvatarUrl = extractUploadedAvatarUrl(response)
+    const nextUser = normalizeUser({
+      ...latestStoredUser,
+      ...user.value,
+      ...responseRecord,
+      avatar_url: uploadedAvatarUrl || responseRecord.avatar_url || user.value.avatar_url
+    })
+
+    syncStoredUser(nextUser)
+    toast.success('ប្ដូររូបភាពបានជោគជ័យ')
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      'មានបញ្ហាក្នុងការបង្ហោះរូបភាព។'
+
+    toast.error('បង្ហោះរូបភាពមិនបាន', {
+      description: message
+    })
+  } finally {
+    isUploadingPhoto.value = false
+    event.target.value = ''
+  }
+}
+
+const saveProfile = async () => {
+  const validationMessage = validateProfile()
+
+  if (validationMessage) {
+    toast.error('មិនអាចរក្សាទុកបាន', {
+      description: validationMessage
+    })
+    return
+  }
+
+  if (!getAuthorization()) {
+    authLogout()
+    toast.error('សម័យចូលប្រព័ន្ធផុតកំណត់', {
+      description: 'សូមចូលប្រព័ន្ធម្ដងទៀត។'
+    })
+    return
+  }
+
+  isSaving.value = true
+
+  try {
+    const requests = [
+      updateWithFallback([
+        `${API_SERVER}/users/authenticated`,
+        `${API_SERVER}/users/update`
+      ], buildUserPayload()),
+      updateWithFallback([
+        `${API_SERVER}/people/update`,
+        `${API_SERVER}/users/people/update`,
+        `${API_SERVER}/people/authenticated`
+      ], buildPeoplePayload(), [403, 404, 500])
+    ]
+
+    const [userResponse, peopleResponse] = await Promise.all(requests)
+    const latestStoredUser = getUser() || {}
+    const nextUser = normalizeUser({
+      ...latestStoredUser,
+      ...user.value,
+      ...extractResponseRecord(userResponse),
+      people: {
+        ...(latestStoredUser.people || {}),
+        ...user.value.people,
+        ...extractResponseRecord(peopleResponse)
+      }
+    })
+
+    syncStoredUser(nextUser)
+    isEditing.value = false
+
+    toast.success('រក្សាទុកបានជោគជ័យ')
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      'មានបញ្ហាក្នុងការរក្សាទុកព័ត៌មានផ្ទាល់ខ្លួន។'
+
+    toast.error('រក្សាទុកមិនបាន', {
+      description: message
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const handleProfileAction = async () => {
+  if (!isEditing.value) {
+    originalUser.value = cloneDeep(user.value)
+    isEditing.value = true
+    return
+  }
+
+  await saveProfile()
+}
 
 onMounted(() => {
-  const storedUser = localStorage.getItem('user')
-  if (storedUser) {
-    user.value = JSON.parse(storedUser)
-  }
-})
-const isEditing = ref(false)
-
-watch(isEditing, (val) => {
-  if (!val) {
-    localStorage.setItem('user', JSON.stringify(user.value))
-  }
+  syncStoredUser(getUser() || createEmptyUser())
 })
 
 </script>

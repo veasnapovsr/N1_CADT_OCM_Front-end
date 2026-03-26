@@ -1,12 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authLogout, getAccessToken, getUser } from '@/plugins/authentication'
 
 // Layouts
 import AuthLayout from '../layouts/AuthLayout.vue'
-import DashboardLayout from '../layouts/DashboardLayout.vue'
 import SidebarLayout from '../components/SidebarLayout.vue'
 
 // Views
 import Login from '../views/Login.vue'
+import ForgotPassword from '../views/pdf/ForgotPassword.vue'
+import VerifyCode from '../views/pdf/VerifyCode.vue'
+import ResetPassword from '../views/pdf/ResetPassword.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Attendance from '../views/Attendance.vue'
 // shedcn
@@ -23,6 +26,7 @@ import DocumentSuccess from '../views/pdf/DocumentSuccess.vue'
 import DocumentDetail from '../views/pdf/DocumentDetail.vue'
 import History from '../views/pdf/History.vue'
 import SystemLogs from '../views/pdf/SystemLogs.vue'
+import OfficialManagement from '../views/pdf/OfficialManagement.vue'
 import Profile from '../views/pdf/Profile.vue'
 import About from '../views/pdf/About.vue'
 import AllNotification from '../views/pdf/AllNotification.vue'
@@ -40,6 +44,7 @@ import Online from '@/components/OnlineUserList.vue'
 ----------------------------------- */
 const routes = [
   //  AUTH (PUBLIC)
+
   {
     path: '/login',
     component: AuthLayout,
@@ -48,6 +53,21 @@ const routes = [
         path: '',
         name: 'login',
         component: Login
+      },
+      {
+        path: '/forgot-password',
+        name: 'forgot-password',
+        component: ForgotPassword
+      },
+      {
+        path: '/verify-code',
+        name: 'verify-code',
+        component: VerifyCode
+      },
+      {
+        path: '/reset-password',
+        name: 'reset-password',
+        component: ResetPassword
       }
     ]
   },
@@ -181,6 +201,16 @@ const routes = [
         name: 'pdf-online',
         component: Online
       },
+      {
+        path: 'official-management',
+        name: 'pdf-official-management',
+        component: OfficialManagement
+      },
+       {
+        path: 'officer-edit',
+        name: 'pdf-officer-edit',
+        component: () => import('../views/pdf/OfficerEdit.vue')
+      }
     ]
   },
 
@@ -212,8 +242,7 @@ const router = createRouter({
    AUTH GUARD 
 ----------------------------------- */
 const isTokenValid = () => {
-  const token = localStorage.getItem('token')
-  return !!token && token !== '[object Object]'
+  return Boolean(getAccessToken())
 }
 
 router.beforeEach((to, from, next) => {
@@ -222,30 +251,23 @@ router.beforeEach((to, from, next) => {
   )
 
   if (requiresAuth && !isTokenValid()) {
-    localStorage.removeItem('token')
+    authLogout()
     next('/login')
     return
   }
 
   if (to.path === '/login' && isTokenValid()) {
+    // If already logged in, decide redirect based on user id
     try {
-      const userRaw = localStorage.getItem('user')
-      const user = userRaw ? JSON.parse(userRaw) : null
-      
-      const leaders = [ 
-        'prime_minister', 'deputy_minister', 'senior_minister', 'minister', 
-        'secretary_of_state', 'deputy_secretary_of_state', 
-        'general_department', 'deputy_general_department' 
-      ];
+      const user = getUser()
+      const userId = user?.id ? String(user.id) : ''
 
-      const isLeader = user?.roles?.some(role => leaders.includes(role.sub_role));
-
-      if (isLeader) {
-        next('/dashboard')
-      } else {
+      if (userId === '2901') {
         next('/pdf/flow-dash2')
+      } else {
+        next('/dashboard')
       }
-    } catch (e) {
+    } catch {
       next('/dashboard')
     }
     return

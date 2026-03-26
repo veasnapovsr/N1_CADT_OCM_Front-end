@@ -18,8 +18,32 @@ const pageInput = ref('1')
 const zoomLevel = ref(100)
 
 // PDF Viewer config
+const normalizedSrc = computed(() => {
+  const source = props.src?.trim()
+
+  if (!source || source.startsWith('blob:') || source.startsWith('data:')) {
+    return source
+  }
+
+  if (source.startsWith('/storage/')) {
+    return source
+  }
+
+  try {
+    const url = new URL(source, window.location.origin)
+
+    if (url.pathname.startsWith('/storage/')) {
+      return `${url.pathname}${url.search}${url.hash}`
+    }
+  } catch {
+    return source
+  }
+
+  return source
+})
+
 const pdfConfig = computed(() => ({
-  src: props.src,
+  src: normalizedSrc.value,
   theme: { preference: 'light' }
 }))
 
