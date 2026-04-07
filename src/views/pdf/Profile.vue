@@ -350,7 +350,7 @@
 <script setup>
 
 import axios from 'axios'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onBeforeUnmount, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
@@ -411,7 +411,10 @@ function normalizeUser(storedUser = {}) {
   }
 }
 
-const API_SERVER = (import.meta.env.VITE_API_SERVER || '').replace(/\/$/, '')
+const RAW_API_SERVER = import.meta.env.VITE_API_SERVER || ''
+const API_SERVER = /^https?:\/\//i.test(RAW_API_SERVER)
+  ? RAW_API_SERVER.replace(/\/$/, '')
+  : new URL(RAW_API_SERVER, import.meta.env.VITE_API_PROXY_TARGET || window.location.origin).toString().replace(/\/$/, '')
 const API_BASE_URL = API_SERVER.replace(/\/api\/authcenter$/i, '')
 const user = ref(createEmptyUser())
 const originalUser = ref(createEmptyUser())
@@ -419,6 +422,15 @@ const isEditing = ref(false)
 const isSaving = ref(false)
 const isUploadingPhoto = ref(false)
 const photoInputRef = ref(null)
+const localPhotoPreviewUrl = ref('')
+
+const resetLocalPhotoPreview = () => {
+  if (localPhotoPreviewUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(localPhotoPreviewUrl.value)
+  }
+
+  localPhotoPreviewUrl.value = ''
+}
 
 const resolveAvatarUrl = (value) => {
   const source = typeof value === 'string' ? value.trim() : ''
@@ -453,6 +465,7 @@ const resolveAvatarUrl = (value) => {
 
 const profileImageSrc = computed(() => {
   return (
+    localPhotoPreviewUrl.value ||
     resolveAvatarUrl(user.value.avatar_url) ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(`${user.value.firstname || ''} ${user.value.lastname || ''}`.trim())}`
   )
@@ -543,13 +556,21 @@ const extractUploadedAvatarUrl = (response) => {
 
   return resolveAvatarUrl(
     record?.avatar_url ||
+    record?.avatar_path ||
+    record?.image_path ||
+    record?.photo_path ||
     record?.image_url ||
     record?.photo_url ||
     record?.url ||
+    record?.path ||
     data?.avatar_url ||
+    data?.avatar_path ||
+    data?.image_path ||
+    data?.photo_path ||
     data?.image_url ||
     data?.photo_url ||
     data?.url ||
+    data?.path ||
     record?.avatar ||
     record?.image ||
     record?.photo ||
@@ -604,6 +625,86 @@ const uploadWithFallback = async (endpoints, formData, retryStatuses = [404]) =>
   throw lastError || new Error('Unable to upload profile photo')
 }
 
+const parseUploadSizeToBytes = (rawValue, defaultUnit = 'b') => {
+  if (!rawValue) {
+    return 0
+  }
+
+  const normalized = String(rawValue).replace(/^"|"$/g, '').trim().toLowerCase()
+  const matched = normalized.match(/^(\d+(?:\.\d+)?)\s*(b|k|kb|m|mb|g|gb)?$/i)
+
+  if (!matched) {
+    return 0
+  }
+
+  const value = Number.parseFloat(matched[1])
+  const inferredUnit = (() => {
+    if (matched[2]) {
+      return matched[2]
+    }
+
+    if (defaultUnit && defaultUnit !== 'b') {
+      return defaultUnit
+    }
+
+    if (value >= 1024) {
+      return 'kb'
+    }
+
+    if (value <= 100) {
+      return 'mb'
+    }
+
+    return 'kb'
+  })()
+  const rawUnit = inferredUnit
+  const unit = rawUnit.length === 1 && rawUnit !== 'b' ? `${rawUnit}b` : rawUnit
+  const multipliers = {
+    b: 1,
+    kb: 1024,
+    mb: 1024 * 1024,
+    gb: 1024 * 1024 * 1024
+  }
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0
+  }
+
+  return Math.round(value * (multipliers[unit] || 1))
+}
+
+const getMaxUploadBytes = () => {
+  const explicitBytes = parseUploadSizeToBytes(localStorage.getItem('max_upload_filesize'), '')
+  if (explicitBytes > 0) {
+    return explicitBytes
+  }
+
+  return parseUploadSizeToBytes(localStorage.getItem('upload_max_filesize'), 'mb')
+}
+
+const extractApiErrorMessage = (error, fallback) => {
+  const responseData = error?.response?.data
+  const validationErrors = responseData?.errors
+
+  if (validationErrors && typeof validationErrors === 'object') {
+    const firstValidationMessage = Object.values(validationErrors)
+      .flat()
+      .find(Boolean)
+
+    if (firstValidationMessage) {
+      return firstValidationMessage
+    }
+  }
+
+  return responseData?.message || responseData?.error || error?.message || fallback
+}
+
+const assertUploadSucceeded = (response) => {
+  if (response?.data?.ok === false) {
+    throw new Error(extractApiErrorMessage({ response }, 'មានបញ្ហាក្នុងការបង្ហោះរូបភាព។'))
+  }
+}
+
 const createProfilePhotoFormData = (file, fieldName) => {
   const formData = new FormData()
   formData.append(fieldName, file, file.name || 'profile-photo')
@@ -613,19 +714,25 @@ const createProfilePhotoFormData = (file, fieldName) => {
     formData.append('user_id', String(user.value.id))
   }
 
+  if (user.value.people?.id) {
+    formData.append('people_id', String(user.value.people.id))
+  }
+
   return formData
 }
 
 const uploadProfilePhoto = async (file) => {
   const endpoint = `${API_SERVER}/users/profile/photo/change`
-  const fieldNames = ['image', 'photo', 'avatar']
+  const fieldNames = ['image', 'photo', 'avatar', 'file']
   let lastError = null
 
   for (const fieldName of fieldNames) {
     try {
-      return await uploadWithFallback([
+      const response = await uploadWithFallback([
         endpoint
-      ], createProfilePhotoFormData(file, fieldName), [400, 404, 415, 422, 500])
+      ], createProfilePhotoFormData(file, fieldName), [400, 404, 413, 415, 422, 500])
+      assertUploadSucceeded(response)
+      return response
     } catch (error) {
       lastError = error
 
@@ -655,6 +762,15 @@ const handleProfilePhotoSelected = async (event) => {
     return
   }
 
+  const maxUploadBytes = getMaxUploadBytes()
+  if (maxUploadBytes > 0 && file.size > maxUploadBytes) {
+    toast.error('ឯកសារធំពេក', {
+      description: `ទំហំឯកសារអតិបរមាគឺ ${(maxUploadBytes / (1024 * 1024)).toFixed(2)} MB។`
+    })
+    event.target.value = ''
+    return
+  }
+
   if (!getAuthorization()) {
     authLogout()
     toast.error('សម័យចូលប្រព័ន្ធផុតកំណត់', {
@@ -665,6 +781,8 @@ const handleProfilePhotoSelected = async (event) => {
   }
 
   isUploadingPhoto.value = true
+  resetLocalPhotoPreview()
+  localPhotoPreviewUrl.value = URL.createObjectURL(file)
 
   try {
     const response = await uploadProfilePhoto(file)
@@ -676,16 +794,17 @@ const handleProfilePhotoSelected = async (event) => {
       ...latestStoredUser,
       ...user.value,
       ...responseRecord,
-      avatar_url: uploadedAvatarUrl || responseRecord.avatar_url || user.value.avatar_url
+      avatar_url: uploadedAvatarUrl || responseRecord.avatar_url || responseRecord.avatar_path || responseRecord.image_path || user.value.avatar_url
     })
 
     syncStoredUser(nextUser)
+    if (uploadedAvatarUrl) {
+      resetLocalPhotoPreview()
+    }
     toast.success('ប្ដូររូបភាពបានជោគជ័យ')
   } catch (error) {
-    const message =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      'មានបញ្ហាក្នុងការបង្ហោះរូបភាព។'
+    resetLocalPhotoPreview()
+    const message = extractApiErrorMessage(error, 'មានបញ្ហាក្នុងការបង្ហោះរូបភាព។')
 
     toast.error('បង្ហោះរូបភាពមិនបាន', {
       description: message
@@ -772,6 +891,10 @@ const handleProfileAction = async () => {
 
 onMounted(() => {
   syncStoredUser(getUser() || createEmptyUser())
+})
+
+onBeforeUnmount(() => {
+  resetLocalPhotoPreview()
 })
 
 </script>

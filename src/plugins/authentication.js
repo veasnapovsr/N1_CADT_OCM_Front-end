@@ -1,7 +1,20 @@
+const USER_CHANGED_EVENT = 'auth:user-changed'
+
+const dispatchUserChanged = (user) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(new CustomEvent(USER_CHANGED_EVENT, {
+    detail: user ?? null
+  }))
+}
+
 export const authLogout = () => {
   try {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    dispatchUserChanged(null)
   } catch (error) {
     console.log(error)
   }
@@ -64,6 +77,7 @@ export const getUser = () => {
 }
 export const setUser = (user) => {
   localStorage.setItem('user',JSON.stringify(user));
+  dispatchUserChanged(user)
 }
 export const isAdmin = () => {
   let admin = getUser()

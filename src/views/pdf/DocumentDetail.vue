@@ -96,7 +96,10 @@
 
             <!-- Sidebar -->
             <div class="w-90 overflow-y-auto doc_sidebar">
-              <DocumentTimeline />
+              <DocumentTimeline
+                :document-id="documentTransactionId"
+                :transaction="documentTransaction"
+              />
             </div>
           </div>
         </div>

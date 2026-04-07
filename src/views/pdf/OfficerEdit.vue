@@ -1273,13 +1273,13 @@ watch(
 .officer-edit-label {
   margin-bottom: 4px;
   font-size: 12px;
-  color: #6b7280;
+  color: color-mix(in srgb, var(--ocm-color) 62%, transparent);
 }
 
 .officer-edit-title {
   font-size: 24px;
   line-height: 1.2;
-  color: #111827;
+  color: var(--ocm-color);
 }
 
 .officer-back-link {
@@ -1288,17 +1288,17 @@ watch(
   justify-content: center;
   min-height: 40px;
   padding: 0 14px;
-  border: 1px solid #d6deeb;
+  border: 1px solid var(--ocm-input-border);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--ocm-app-bg);
+  color: var(--ocm-input-color);
   text-decoration: none;
 }
 
 .officer-edit-form {
-  border: 1px solid #d9e4f5;
+  border: 1px solid var(--ocm-app-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--ocm-app-bg);
   overflow: hidden;
 }
 
@@ -1320,8 +1320,8 @@ watch(
 }
 
 .officer-edit-loading {
-  background: #f8fafc;
-  color: #475569;
+  background: color-mix(in srgb, var(--ocm-app-bg) 92%, #94a3b8 8%);
+  color: var(--ocm-input-color);
 }
 
 .officer-edit-grid {
@@ -1345,7 +1345,7 @@ watch(
 .officer-field-help {
   margin: 0;
   font-size: 12px;
-  color: #64748b;
+  color: color-mix(in srgb, var(--ocm-color) 68%, transparent);
 }
 
 .officer-field--wide {
@@ -1368,8 +1368,8 @@ watch(
   height: 112px;
   object-fit: cover;
   border-radius: 12px;
-  border: 1px solid #dbe4f0;
-  background: #f8fafc;
+  border: 1px solid var(--ocm-input-border);
+  background: color-mix(in srgb, var(--ocm-app-bg) 90%, #94a3b8 10%);
 }
 
 .officer-image-upload-actions {
@@ -1386,13 +1386,13 @@ watch(
 .officer-image-help {
   margin: 0;
   font-size: 12px;
-  color: #64748b;
+  color: color-mix(in srgb, var(--ocm-color) 68%, transparent);
 }
 
 .officer-field-label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--ocm-color);
 }
 
 .officer-edit-actions {
@@ -1400,8 +1400,8 @@ watch(
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 18px 18px;
-  border-top: 1px solid #e6edf8;
-  background: #fbfdff;
+  border-top: 1px solid var(--ocm-app-border);
+  background: color-mix(in srgb, var(--ocm-app-bg) 94%, #94a3b8 6%);
 }
 
 .officer-action-btn {
@@ -1419,8 +1419,8 @@ watch(
 }
 
 .officer-action-btn.cancel {
-  background: #e5e7eb;
-  color: #374151;
+  background: color-mix(in srgb, var(--ocm-app-bg) 82%, #94a3b8 18%);
+  color: var(--ocm-color);
 }
 
 .officer-action-btn.save {
@@ -1443,6 +1443,42 @@ watch(
 .officer-action-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.officer-back-link:hover {
+  border-color: var(--ocm-input-shadow);
+  color: var(--ocm-input-shadow);
+}
+
+:global(body.ocm_dark_skin) .officer-edit-form {
+  background: #252b3b;
+  border-color: #3d4558;
+}
+
+:global(body.ocm_dark_skin) .officer-back-link {
+  background: #252b3b;
+  border-color: #46506a;
+  color: #e5edf9;
+}
+
+:global(body.ocm_dark_skin) .officer-edit-loading {
+  background: #2d3548;
+  color: #dbe5f3;
+}
+
+:global(body.ocm_dark_skin) .officer-image-preview {
+  background: #1f2533;
+  border-color: #4b556d;
+}
+
+:global(body.ocm_dark_skin) .officer-edit-actions {
+  background: #202635;
+  border-top-color: #3d4558;
+}
+
+:global(body.ocm_dark_skin) .officer-action-btn.cancel {
+  background: #3d4558;
+  color: #f8fafc;
 }
 
 @media (max-width: 1080px) {

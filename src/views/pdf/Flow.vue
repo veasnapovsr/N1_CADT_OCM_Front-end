@@ -36,6 +36,7 @@ import DocumentSentToFilter from '@/components/flow/DocumentSentToFilter.vue'
 import { flowStats } from '@/data/Flowstatuscheck'
 import { documents } from '@/data/documents'
 import { formatKhmerNumber } from '@/lib/utils'
+import { applyDocumentFlowListOverride } from '@/lib/documentFlow'
 
 const store = useStore()
 const route = useRoute()
@@ -254,7 +255,7 @@ const fetchDocuments = async (page = 1) => {
         const position = jobs?.length
           ? jobs[0]?.organization_structure_position?.position?.name
           : ''
-        return {
+        return applyDocumentFlowListOverride({
           id: r.id,
           title: r.subject,
           code: r.document?.number,
@@ -278,7 +279,7 @@ const fetchDocuments = async (page = 1) => {
           sentAt: r.sent_at,
           sentTo: !r.receivers?.length ? 'គ្មានអ្នកទទួល' : r.receivers.map((rev) => rev.user?.fullname).filter(Boolean).join(', '),
           position
-        }
+        })
       })
     }
     

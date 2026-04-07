@@ -180,6 +180,20 @@
                         <span class="tbl_action">
                           <span class="row_ac_w">
                             <button
+                              class="row_ac_in ocm-tooltip ocm-viac view"
+                              type="button"
+                              title="មើលកាតមន្ត្រី"
+                              @click="openOfficerCard(official)"
+                            >
+                              <span class="tip_txt">មើលកាត</span>
+                              <span class="d-flex">
+                                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="76.03 186 871.95 652" width="18" height="18">
+                                  <path d="M396 512a112 112 0 1 0 224 0a112 112 0 1 0-224 0zm546.2-25.8C847.4 286.5 704.1 186 512 186c-192.2 0-335.4 100.5-430.2 300.3a60.3 60.3 0 0 0 0 51.5C176.6 737.5 319.9 838 512 838c192.2 0 335.4-100.5 430.2-300.3c7.7-16.2 7.7-35 0-51.5zM508 688c-97.2 0-176-78.8-176-176s78.8-176 176-176s176 78.8 176 176s-78.8 176-176 176z" fill="currentColor"></path>
+                                </svg>
+                              </span>
+                            </button>
+
+                            <button
                               class="row_ac_in ocm-tooltip ocm-edac edit"
                               type="button"
                               title="កែប្រែ"
@@ -207,20 +221,6 @@
                               <span class="d-flex">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="18" height="18">
                                   <path d="M32 464a48 48 0 0 0 48 48h288a48 48 0 0 0 48-48V128H32zm272-256a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zM432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16z" fill="currentColor"></path>
-                                </svg>
-                              </span>
-                            </button>
-
-                            <button
-                              class="row_ac_in ocm-tooltip ocm-viewac view"
-                              type="button"
-                              title="មើលកាតមន្ត្រី"
-                              @click="openOfficerCard(official)"
-                            >
-                              <span class="tip_txt">មើលកាត</span>
-                              <span class="d-flex">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
-                                  <path fill="currentColor" d="M12 4.5c-7 0-10 7.5-10 7.5s3 7.5 10 7.5 10-7.5 10-7.5-3-7.5-10-7.5zm0 13c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
                                 </svg>
                               </span>
                             </button>
@@ -1306,12 +1306,13 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  background: transparent;
+  border-radius: 0;
+  width: auto;
+  height: auto;
+  padding: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: opacity 0.2s;
   position: relative;
   border: 0;
 }
@@ -1329,7 +1330,7 @@ onMounted(() => {
 }
 
 .row_ac_in:hover {
-  background: #e0e7ef;
+  opacity: 0.8;
 }
 
 .ocm-tooltip {
@@ -1467,36 +1468,47 @@ tbody tr:hover {
 }
 
 .ocm_sort_search_bar {
-  background: #ffffff;
+  background: var(--ocm-app-bg);
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   display: flex;
   gap: 0.75rem;
   align-items: center;
   margin-bottom: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--ocm-app-border);
   flex-wrap: wrap;
 }
 
 .ocm_search_input {
-  background: #fff;
-  color: #111827;
-  border: 1px solid #d1d5db;
+  background: var(--ocm-app-bg);
+  color: var(--ocm-input-color);
+  border: 1px solid var(--ocm-input-border);
   border-radius: 0.375rem;
   padding: 0.65rem 1rem;
   font-size: 1rem;
   min-width: 260px;
 }
 
+.ocm_search_input::placeholder {
+  color: color-mix(in srgb, var(--ocm-input-color) 62%, transparent);
+}
+
+.ocm_search_input:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  border-color: var(--ocm-input-shadow);
+  box-shadow: 0 0 0 1px var(--ocm-input-shadow);
+}
+
 .ocm_search_btn,
 .ocm_reset_btn {
   color: #fff;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 0.375rem;
   padding: 0.65rem 1.25rem;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .ocm_search_btn {
@@ -1513,6 +1525,45 @@ tbody tr:hover {
 
 .ocm_reset_btn:hover {
   background: #4b5563;
+}
+
+:global(body.ocm_dark_skin) .search_wrap {
+  margin-bottom: 1rem;
+}
+
+:global(body.ocm_dark_skin) .ocm_sort_search_bar {
+  background: var(--ocm-app-bg);
+  border-color: var(--ocm-app-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+:global(body.ocm_dark_skin) .ocm_search_input {
+  background: #252b3b;
+  color: var(--ocm-input-color);
+  border-color: #4a536c;
+}
+
+:global(body.ocm_dark_skin) .ocm_search_input::placeholder {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+:global(body.ocm_dark_skin) .ocm_search_btn {
+  background: #1e40ff;
+  border-color: #3353ff;
+}
+
+:global(body.ocm_dark_skin) .ocm_search_btn:hover {
+  background: #3558ff;
+}
+
+:global(body.ocm_dark_skin) .ocm_reset_btn {
+  background: #3d4558;
+  border-color: #525d76;
+  color: #f8fafc;
+}
+
+:global(body.ocm_dark_skin) .ocm_reset_btn:hover {
+  background: #4a556d;
 }
 
 .modal-action-btn {
@@ -1554,6 +1605,7 @@ tbody tr:hover {
 
 .officer-card-page {
   width: 100%;
+  color: #111827;
 }
 
 .officer-card-page,
@@ -1589,6 +1641,7 @@ tbody tr:hover {
   background-repeat: no-repeat;
   background-size: 70% 70%;
   border: 1px solid #e5e7eb;
+  color: #111827;
 }
 
 .officer-vertical-card__content {
@@ -1634,19 +1687,28 @@ tbody tr:hover {
   text-align: center;
   margin: 8px 0 12px;
   font-weight: 700;
+  color: #111827;
 }
 
 .officer-card-meta {
   width: 100%;
+  color: #111827;
+}
+
+.officer-card-meta td {
+  color: #111827;
+  line-height: 1.55;
 }
 
 .officer-card-meta td:first-child {
   width: 88px;
   font-weight: 700;
+  color: #374151;
 }
 
 .officer-card-meta td:last-child {
   font-weight: 600;
+  color: #111827;
 }
 
 .officer-card-stamp-wrap {
@@ -1744,6 +1806,7 @@ tbody tr:hover {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   border: 1px solid #e5e7eb;
   background: linear-gradient(135deg, #ffffff, #f8fafc);
+  color: #111827;
 }
 
 .horizontal-officer-card__table {
@@ -1761,6 +1824,7 @@ tbody tr:hover {
   gap: 10px;
   align-items: center;
   font-size: 13px;
+  color: #111827;
 }
 
 .horizontal-officer-card__photo {
@@ -1807,10 +1871,12 @@ tbody tr:hover {
 
 .horizontal-officer-card__small-text {
   font-size: 13px;
+  color: #374151;
 }
 
 .horizontal-officer-card__bold {
   font-weight: 700;
+  color: #111827;
 }
 
 .horizontal-officer-card__expire-cell {
@@ -1820,6 +1886,7 @@ tbody tr:hover {
 .horizontal-officer-card__expire-text {
   font-size: 12px;
   line-height: 1.7;
+  color: #374151;
 }
 
 .horizontal-officer-card__qr-cell {

@@ -10,9 +10,17 @@ import FlowDashboardChart from '@/components/FlowDashboardChart.vue'
 import FlowStats from '@/components/flow/FlowStatus.vue'
 import { flowStats } from '@/data/Flowstatuscheck'
 import { formatKhmerNumber } from '@/lib/utils'
+import {
+	applyDocumentFlowListOverride,
+	canUserAccessFlowRecord,
+	getStoredDocumentFlowState
+} from '@/lib/documentFlow'
+import { getUser, isAdmin } from '@/plugins/authentication'
 
 const router = useRouter()
 const store = useStore()
+const currentUser = getUser() || {}
+const userIsAdmin = isAdmin()
 
 const goToDetail = (doc) => {
   if (doc?.id) {
@@ -40,19 +48,26 @@ const fetchPendingList = async () => {
   try {
     const res = await store.dispatch('transaction/list', {
       status: 'pending',
-      perPage: 4,
+			perPage: 100,
       page: 1
     })
     if (res?.data?.records) {
-      pendingList.value = res.data.records.map((r) => {
-        return {
-          id: r.id,
-          title: r.subject,
-          code: r.document?.number,
-          size: r.document?.pdf_file_size || '3 MB',
-          sentTo: !r.receivers?.length ? 'គ្មានអ្នកទទួល' : r.receivers.map((rev) => rev.user?.fullname).filter(Boolean).join(', ')
-        }
-      })
+			pendingList.value = res.data.records
+				.map((r) => {
+					const flowState = getStoredDocumentFlowState(r.id, r)
+					return applyDocumentFlowListOverride({
+						id: r.id,
+						title: r.subject,
+						code: r.document?.number,
+						size: r.document?.pdf_file_size || '3 MB',
+						sentTo: !r.receivers?.length ? 'គ្មានអ្នកទទួល' : r.receivers.map((rev) => rev.user?.fullname).filter(Boolean).join(', '),
+						flowState,
+						transaction: r,
+						updatedAt: flowState?.updatedAt || r.updated_at || r.sent_at || r.created_at || ''
+					})
+				})
+				.filter((record) => canUserAccessFlowRecord(currentUser, record, { isAdmin: userIsAdmin }))
+				.sort((left, right) => new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0))
     }
   } catch (err) {
     // eslint-disable-next-line no-console

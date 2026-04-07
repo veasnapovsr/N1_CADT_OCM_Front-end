@@ -1,7 +1,7 @@
 <template>
 	<div class="ocm_pover_wr">
 	  <div class="ocm_profile ocm_pover" @click="togglePopover">
-		<span class="avtar"><img :src="user.avatar_url" /></span>
+    <span class="avtar"><img :src="avatarSrc" /></span>
 		<span>{{ user.countesy.name }}<br><b class="moul fs-90">{{ user.lastname }} {{ user.firstname }}</b></span>
 	  </div>
 	  <div class="pop_content">
@@ -31,7 +31,7 @@
   </template>
   
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 const user = ref({
   avatar_url: '',
   firstname: '',
@@ -40,6 +40,42 @@ const user = ref({
 });
 
 const isPopoverActive = ref(false);
+
+const createEmptyUser = () => ({
+  avatar_url: '',
+  firstname: '',
+  lastname: '',
+  countesy: { name: '' }
+});
+
+const avatarSrc = computed(() => {
+  if (user.value.avatar_url) {
+    return user.value.avatar_url;
+  }
+
+  const fullName = `${user.value.lastname || ''} ${user.value.firstname || ''}`.trim();
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'User')}`;
+});
+
+const syncUserFromStorage = (nextUser) => {
+  if (nextUser && typeof nextUser === 'object') {
+    user.value = nextUser;
+    return;
+  }
+
+  const storedUser = localStorage.getItem('user');
+  user.value = storedUser ? JSON.parse(storedUser) : createEmptyUser();
+};
+
+const handleUserChanged = (event) => {
+  syncUserFromStorage(event?.detail);
+};
+
+const handleStorageChanged = (event) => {
+  if (event.key === 'user') {
+    syncUserFromStorage();
+  }
+};
 
 // Function to toggle only the clicked popover
 const togglePopover = (event) => {
@@ -75,14 +111,15 @@ const handleClickOutside = (event) => {
 // Listen for clicks outside
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    user.value = JSON.parse(storedUser);
-  }
+  window.addEventListener('auth:user-changed', handleUserChanged);
+  window.addEventListener('storage', handleStorageChanged);
+  syncUserFromStorage();
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('auth:user-changed', handleUserChanged);
+  window.removeEventListener('storage', handleStorageChanged);
 });
 
 const logout = () => {
