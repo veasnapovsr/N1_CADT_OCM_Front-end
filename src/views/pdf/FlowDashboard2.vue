@@ -13,6 +13,7 @@ import { formatKhmerNumber } from '@/lib/utils'
 import {
   applyDocumentFlowListOverride,
   canUserAccessFlowRecord,
+  dedupeWorkflowRecords,
   getStoredDocumentFlowState
 } from '@/lib/documentFlow'
 
@@ -157,7 +158,7 @@ const fetchPendingList = async () => {
     })
 
     if (res?.data?.records) {
-      pendingList.value = res.data.records
+      pendingList.value = dedupeWorkflowRecords(res.data.records)
         .map((r) => {
           const flowState = getStoredDocumentFlowState(r.id, r)
           return applyDocumentFlowListOverride({

@@ -19,7 +19,7 @@
                 <h2 class="h doc-heading t-lspace flex justify-between items-start gap-4">
                   <div class="flex-1 min-w-0">
                     <!-- Title allowed to wrap to 2 lines -->
-                    <span class="block leading-snug break-words line-clamp-2">
+                    <span class="block leading-snug wrap-break-word line-clamp-2">
                       {{ documentTransaction?.document?.objective || documentTransaction?.document?.title || 'ឯកសារយោង' }}
                       <span v-if="comparePdfSrc" class="text-red-500 text-sm block md:inline font-bold"> (ប្រៀបធៀបឯកសារ)</span>
                     </span>
@@ -99,6 +99,7 @@
               <DocumentTimeline
                 :document-id="documentTransactionId"
                 :transaction="documentTransaction"
+                @updated="handleTimelineUpdated"
               />
             </div>
           </div>
@@ -214,6 +215,15 @@ const loadData = async () => {
     console.error(err)
     pdfSrc.value = '/docs/report2.pdf'
   }
+}
+
+const handleTimelineUpdated = async (nextTransaction) => {
+  if (nextTransaction && typeof nextTransaction === 'object') {
+    documentTransaction.value = nextTransaction
+    return
+  }
+
+  await loadData()
 }
 
 onMounted(() => {

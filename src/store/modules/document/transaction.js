@@ -1,4 +1,22 @@
 import crud from '../../../api/crud'
+
+const normalizeWorkflowAction = (params = {}, defaultAction = 'send') => {
+  const flowAction = typeof params?.flow_action === 'string' && params.flow_action.trim()
+    ? params.flow_action.trim().toLowerCase()
+    : typeof params?.action === 'string' && params.action.trim()
+      ? params.action.trim().toLowerCase()
+      : defaultAction
+  const normalizedId = params?.transaction_id ?? params?.id
+
+  return {
+    ...params,
+    id: normalizedId,
+    transaction_id: normalizedId,
+    flow_action: flowAction,
+    action: flowAction
+  }
+}
+
 // initial state
 const state = () => ({
   model: {
@@ -111,6 +129,18 @@ const actions = {
   },
   async pdf ({ state, commit, rootState },params) {
     return await crud.read(import.meta.env.VITE_API_SERVER+"/"+state.model.module+"/pdf?id="+params.id)
+  },
+  async accept ({ state }, params) {
+    return await crud.create(
+      import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/accept',
+      normalizeWorkflowAction(params, 'diy')
+    )
+  },
+  async send ({ state }, params) {
+    return await crud.create(
+      import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/send',
+      normalizeWorkflowAction(params, 'send')
+    )
   },
   /** GET documents/transactions/getTotalByStatus -> { ok, records: { draft, pending, approved, rejected }, message } */
   async getTotalByStatus ({ state, commit, rootState }) {

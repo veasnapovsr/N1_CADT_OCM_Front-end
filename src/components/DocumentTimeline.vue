@@ -93,16 +93,46 @@
       <textarea
         v-model="commentDraft"
         rows="4"
-        :disabled="!canActOnCurrentStep"
+        :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
         placeholder="បញ្ចូលមតិយោបល់មុនបញ្ជូនឯកសារ..."
         class="w-full rounded-sm border p-3 text-sm focus:ring-2 focus:ring-blue-500"
       />
+
+      <div v-if="currentStep && canChooseFlowBranch" class="dc_flow_choice">
+        <p class="dc_flow_choice_label">ជ្រើសរើសសកម្មភាពលំហូរ</p>
+
+        <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'send' }">
+          <input
+            v-model="selectedFlowAction"
+            type="radio"
+            value="send"
+            :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
+          />
+          <span>
+            <strong>បញ្ជូនបន្ត</strong>
+            <small>ផ្ញើឯកសារទៅអ្នកទទួលបន្ទាប់</small>
+          </span>
+        </label>
+
+        <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'diy' }">
+          <input
+            v-model="selectedFlowAction"
+            type="radio"
+            value="diy"
+            :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
+          />
+          <span>
+            <strong>ដំណើរការដោយខ្លួនឯង</strong>
+            <small>រក្សាទុកជាការងារកំពុងដំណើរការសម្រាប់អ្នកកាន់កាប់បច្ចុប្បន្ន</small>
+          </span>
+        </label>
+      </div>
 
       <div class="dc_composer_actions">
         <button
           type="button"
           class="inline-flex items-center btn_dc btn_dc--secondary"
-          :disabled="!canActOnCurrentStep || !commentDraft.trim()"
+          :disabled="!canActOnCurrentStep || !commentDraft.trim() || isSubmittingWorkflow"
           @click="handleCommentOnly"
         >
           បញ្ចូលមតិយោបល់
@@ -112,10 +142,10 @@
           v-if="currentStep"
           type="button"
           class="inline-flex items-center btn_dc btn_dc--primary"
-          :disabled="!canActOnCurrentStep"
+          :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
           @click="handleForward"
         >
-          {{ isFinalStep ? 'អនុម័តឯកសារ' : 'បញ្ជូនបន្ត' }}
+          {{ primaryActionLabel }}
         </button>
       </div>
     </div>
@@ -124,10 +154,13 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useStore } from 'vuex'
 import { toast } from 'vue-sonner'
 import { formatDateKhmer, formatKhmerNumber } from '@/lib/utils'
 import {
+  FLOW_BRANCH_STEP_ID,
   addCommentToCurrentFlowStep,
+  canUserUseExplicitFlowActions,
   forwardCurrentFlowStep,
   getAllowedFlowStepIds,
   getStoredDocumentFlowState,
@@ -135,6 +168,8 @@ import {
   sendBackCurrentFlowStep
 } from '@/lib/documentFlow'
 import { getUser, isAdmin } from '@/plugins/authentication'
+
+const store = useStore()
 
 const props = defineProps({
   documentId: {
@@ -151,6 +186,8 @@ const emit = defineEmits(['updated'])
 
 const flowState = ref(getStoredDocumentFlowState(props.documentId, props.transaction))
 const commentDraft = ref('')
+const isSubmittingWorkflow = ref(false)
+const selectedFlowAction = ref('send')
 
 const syncFlowState = () => {
   flowState.value = getStoredDocumentFlowState(props.documentId, props.transaction)
@@ -161,18 +198,93 @@ watch(
   () => {
     syncFlowState()
     commentDraft.value = ''
+    selectedFlowAction.value = 'send'
   },
   { immediate: true }
 )
 
 const flowSteps = computed(() => flowState.value?.steps || [])
 const currentStep = computed(() => flowSteps.value.find((step) => step.id === flowState.value?.activeStepId) || null)
-const isFinalStep = computed(() => Boolean(currentStep.value && currentStep.value.id === flowSteps.value.length))
 const currentUser = computed(() => getUser() || {})
 const userIsAdmin = computed(() => isAdmin())
+const canUseExplicitFlowActions = computed(() => canUserUseExplicitFlowActions(currentUser.value))
+const transactionReceivers = computed(() => Array.isArray(props.transaction?.receivers) ? props.transaction.receivers : [])
+const normalizeIdentityValue = (value) => String(value ?? '').trim().toLowerCase()
+const currentUserIdentitySet = computed(() => {
+  const user = currentUser.value || {}
+  const fullName = user.lastname && user.firstname
+    ? `${user.lastname} ${user.firstname}`
+    : user.fullname || user.name || ''
+
+  return new Set([
+    user.id,
+    user.user_id,
+    user.username,
+    user.email,
+    fullName
+  ].map((value) => normalizeIdentityValue(value)).filter(Boolean))
+})
+const currentActionableReceiverByIdentity = computed(() => transactionReceivers.value.find((receiver) => {
+  const receiverStatus = String(receiver?.status || receiver?.action || receiver?.state || '').trim().toLowerCase()
+  if (!['current', 'progressing', 'in_progress', 'processing', 'waiting', 'pending'].includes(receiverStatus)) {
+    return false
+  }
+
+  const receiverUser = receiver?.user || receiver || {}
+  const receiverFullName = receiverUser.lastname && receiverUser.firstname
+    ? `${receiverUser.lastname} ${receiverUser.firstname}`
+    : receiverUser.fullname || receiverUser.name || ''
+  const receiverIdentities = [
+    receiverUser.id,
+    receiver.user_id,
+    receiver.receiver_id,
+    receiverUser.username,
+    receiverUser.email,
+    receiverFullName
+  ].map((value) => normalizeIdentityValue(value)).filter(Boolean)
+
+  return receiverIdentities.some((value) => currentUserIdentitySet.value.has(value))
+}))
 const allowedStepIds = computed(() => getAllowedFlowStepIds(currentUser.value, { isAdmin: userIsAdmin.value }))
 const canActOnCurrentStep = computed(() => Boolean(currentStep.value && allowedStepIds.value.includes(currentStep.value.id)))
 const canSendBack = computed(() => Boolean(canActOnCurrentStep.value && currentStep.value && currentStep.value.id > 1))
+const canChooseFlowBranch = computed(() => Boolean(
+  canUseExplicitFlowActions.value
+  && currentStep.value
+  && currentStep.value.id === FLOW_BRANCH_STEP_ID
+))
+const normalizedSelectedFlowAction = computed(() => {
+  if (!canChooseFlowBranch.value) {
+    return 'send'
+  }
+
+  return selectedFlowAction.value === 'diy' ? 'diy' : 'send'
+})
+const primaryActionLabel = computed(() => {
+  if (!canChooseFlowBranch.value) {
+    return 'បញ្ជូនបន្ត'
+  }
+
+  return normalizedSelectedFlowAction.value === 'diy'
+    ? 'ដំណើរការដោយខ្លួនឯង'
+    : 'បញ្ជូនបន្ត'
+})
+const currentStepReceiver = computed(() => {
+  const stepId = currentStep.value?.id
+  if (!stepId || stepId <= 1) {
+    return null
+  }
+
+  return transactionReceivers.value[stepId - 2] || currentActionableReceiverByIdentity.value || null
+})
+const nextStepReceiver = computed(() => {
+  const stepId = currentStep.value?.id
+  if (!stepId || stepId >= flowSteps.value.length) {
+    return null
+  }
+
+  return transactionReceivers.value[stepId - 1] || null
+})
 const permissionHint = computed(() => {
   if (!currentStep.value) {
     return ''
@@ -195,11 +307,111 @@ const currentActorName = computed(() => {
   return parts.join(' ').trim() || 'អ្នកប្រើប្រាស់បច្ចុប្បន្ន'
 })
 
+const buildWorkflowPayload = () => {
+  const currentReceiver = currentStepReceiver.value
+  const receiver = nextStepReceiver.value
+  const actionTransactionId = currentReceiver?.transaction_id
+    ?? currentReceiver?.document_transaction_id
+    ?? currentReceiver?.source_transaction_id
+    ?? currentReceiver?.current_transaction_id
+    ?? props.transaction?.id
+    ?? props.documentId
+    ?? currentReceiver?.id
+  const receiverIds = [
+    receiver?.user?.id,
+    receiver?.user_id,
+    receiver?.to_user_id,
+    receiver?.next_user_id,
+    receiver?.officer?.id,
+    receiver?.people?.id,
+    receiver?.receiver_id,
+    receiver?.id
+  ].filter((value) => value != null && value !== '')
+  const uniqueReceiverIds = Array.from(new Set(receiverIds))
+  const receiverId = uniqueReceiverIds[0] ?? null
+  const payload = {
+    id: actionTransactionId,
+    transaction_id: actionTransactionId,
+    current_transaction_id: actionTransactionId,
+    document_transaction_id: props.transaction?.id ?? props.documentId,
+    source_transaction_id: props.transaction?.id ?? props.documentId,
+    flow_action: normalizedSelectedFlowAction.value,
+    action: normalizedSelectedFlowAction.value,
+    comment: commentDraft.value,
+    note: commentDraft.value,
+    remark: commentDraft.value
+  }
+
+  if (currentReceiver?.id != null) {
+    payload.receiver_transaction_id = currentReceiver.id
+    payload.current_receiver_id = currentReceiver.id
+  }
+
+  if (normalizedSelectedFlowAction.value === 'send' && receiverId != null) {
+    payload.receiver_id = receiverId
+    payload.user_id = receiverId
+    payload.next_receiver_id = receiverId
+    payload.next_user_id = receiverId
+    payload.to_user_id = receiverId
+    payload.receivers = uniqueReceiverIds
+    payload.receiver_ids = uniqueReceiverIds
+
+    if (receiver?.organization_structure_position?.id != null) {
+      payload.organization_structure_position_id = receiver.organization_structure_position.id
+      payload.next_organization_structure_position_id = receiver.organization_structure_position.id
+    }
+
+    if (receiver?.officer?.id != null) {
+      payload.officer_id = receiver.officer.id
+      payload.next_officer_id = receiver.officer.id
+    }
+  }
+
+  return payload
+}
+
+const getRequestErrorMessage = (error, fallbackMessage) => {
+  const responseData = error?.response?.data
+  const validationErrors = responseData?.errors
+
+  if (validationErrors && typeof validationErrors === 'object') {
+    const firstEntry = Object.values(validationErrors).find((entry) => Array.isArray(entry) && entry.length > 0)
+    if (firstEntry?.[0]) {
+      return String(firstEntry[0])
+    }
+  }
+
+  if (typeof responseData?.message === 'string' && responseData.message.trim()) {
+    return responseData.message.trim()
+  }
+
+  return fallbackMessage
+}
+
 const persistState = (nextState, successMessage) => {
   const savedState = saveStoredDocumentFlowState(props.documentId, nextState)
   flowState.value = savedState
   commentDraft.value = ''
   emit('updated', savedState)
+  if (successMessage) {
+    toast.success(successMessage)
+  }
+}
+
+const reloadTransaction = async () => {
+  if (!props.documentId) {
+    return null
+  }
+
+  const res = await store.dispatch('transaction/read', { id: props.documentId })
+  return res?.data?.record ?? res?.data ?? null
+}
+
+const syncWithBackend = async (successMessage) => {
+  const refreshedTransaction = await reloadTransaction()
+  flowState.value = getStoredDocumentFlowState(props.documentId, refreshedTransaction || props.transaction)
+  commentDraft.value = ''
+  emit('updated', refreshedTransaction)
   if (successMessage) {
     toast.success(successMessage)
   }
@@ -218,21 +430,41 @@ const handleCommentOnly = () => {
   persistState(nextState, 'បានរក្សាទុកមតិយោបល់')
 }
 
-const handleForward = () => {
-  if (!canActOnCurrentStep.value) {
+const handleForward = async () => {
+  if (!canActOnCurrentStep.value || isSubmittingWorkflow.value) {
     return
   }
 
-  const nextState = forwardCurrentFlowStep(flowState.value, {
-    actorName: currentActorName.value,
-    message: commentDraft.value
-  })
+  isSubmittingWorkflow.value = true
 
-  persistState(nextState, isFinalStep.value ? 'បានអនុម័តឯកសារ' : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់')
+  try {
+    const workflowPayload = buildWorkflowPayload()
+    console.log('workflow send payload', workflowPayload)
+
+    await store.dispatch('transaction/send', workflowPayload)
+
+    const optimisticFlowState = forwardCurrentFlowStep(flowState.value, {
+      actorName: currentActorName.value,
+      message: commentDraft.value
+    })
+    flowState.value = saveStoredDocumentFlowState(props.documentId, optimisticFlowState)
+
+    await syncWithBackend(
+      normalizedSelectedFlowAction.value === 'diy'
+        ? 'បានរក្សាទុកឯកសារសម្រាប់ដំណើរការដោយខ្លួនឯង'
+        : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់'
+    )
+  } catch (error) {
+    console.error(error)
+    console.error('workflow send response', error?.response?.data)
+    toast.error(getRequestErrorMessage(error, 'មិនអាចបញ្ជូនលំហូរឯកសារបានទេ'))
+  } finally {
+    isSubmittingWorkflow.value = false
+  }
 }
 
 const handleSendBack = () => {
-  if (!canActOnCurrentStep.value) {
+  if (!canActOnCurrentStep.value || isSubmittingWorkflow.value) {
     return
   }
 
@@ -449,6 +681,48 @@ const commentClass = (type) => {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 12px;
+}
+
+.dc_flow_choice {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.dc_flow_choice_label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.dc_flow_option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dc_flow_option input {
+  margin-top: 3px;
+}
+
+.dc_flow_option span {
+  display: grid;
+  gap: 2px;
+}
+
+.dc_flow_option small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.dc_flow_option--active {
+  border-color: #2563eb;
+  background: #eff6ff;
 }
 
 .dc_permission_hint {

@@ -36,7 +36,7 @@ import DocumentSentToFilter from '@/components/flow/DocumentSentToFilter.vue'
 import { flowStats } from '@/data/Flowstatuscheck'
 import { documents } from '@/data/documents'
 import { formatKhmerNumber } from '@/lib/utils'
-import { applyDocumentFlowListOverride } from '@/lib/documentFlow'
+import { applyDocumentFlowListOverride, dedupeWorkflowRecords } from '@/lib/documentFlow'
 
 const store = useStore()
 const route = useRoute()
@@ -250,7 +250,7 @@ const fetchDocuments = async (page = 1) => {
     const res = await store.dispatch('transaction/list', params)
 
     if (res.data && res.data.records) {
-      records.value = res.data.records.map((r) => {
+      records.value = dedupeWorkflowRecords(res.data.records).map((r) => {
         const jobs = r.sender?.officer?.jobs
         const position = jobs?.length
           ? jobs[0]?.organization_structure_position?.position?.name
