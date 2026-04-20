@@ -160,8 +160,11 @@ import { formatDateKhmer, formatKhmerNumber } from '@/lib/utils'
 import {
   FLOW_BRANCH_STEP_ID,
   addCommentToCurrentFlowStep,
+  buildDocumentFlowState,
   canUserUseExplicitFlowActions,
+  clearStoredDocumentFlowState,
   forwardCurrentFlowStep,
+  getFlowProgressSignature,
   getAllowedFlowStepIds,
   getStoredDocumentFlowState,
   saveStoredDocumentFlowState,
@@ -407,11 +410,25 @@ const reloadTransaction = async () => {
   return res?.data?.record ?? res?.data ?? null
 }
 
-const syncWithBackend = async (successMessage) => {
+const syncWithBackend = async (successMessage, fallbackFlowState = null) => {
   const refreshedTransaction = await reloadTransaction()
-  flowState.value = getStoredDocumentFlowState(props.documentId, refreshedTransaction || props.transaction)
+  const backendTransaction = refreshedTransaction || props.transaction
+  const backendFlowState = backendTransaction ? buildDocumentFlowState(backendTransaction) : null
+  const shouldKeepOptimisticState = Boolean(
+    fallbackFlowState
+    && backendFlowState
+    && getFlowProgressSignature(backendFlowState) < getFlowProgressSignature(fallbackFlowState)
+  )
+
+  if (shouldKeepOptimisticState) {
+    flowState.value = saveStoredDocumentFlowState(props.documentId, fallbackFlowState)
+  } else {
+    clearStoredDocumentFlowState(props.documentId)
+    flowState.value = getStoredDocumentFlowState(props.documentId, backendTransaction)
+  }
+
   commentDraft.value = ''
-  emit('updated', refreshedTransaction)
+  emit('updated', backendTransaction)
   if (successMessage) {
     toast.success(successMessage)
   }
@@ -452,11 +469,33 @@ const handleForward = async () => {
     await syncWithBackend(
       normalizedSelectedFlowAction.value === 'diy'
         ? 'បានរក្សាទុកឯកសារសម្រាប់ដំណើរការដោយខ្លួនឯង'
-        : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់'
+        : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់',
+      optimisticFlowState
     )
   } catch (error) {
     console.error(error)
     console.error('workflow send response', error?.response?.data)
+
+    // Sync with backend — if the server already advanced the step (e.g. a previous
+    // attempt succeeded but the UI didn't update), recover gracefully.
+    try {
+      const refreshed = await reloadTransaction()
+      if (refreshed) {
+        clearStoredDocumentFlowState(props.documentId)
+        const backendState = getStoredDocumentFlowState(props.documentId, refreshed)
+        const previousStepId = flowState.value?.activeStepId
+        if (backendState?.activeStepId && backendState.activeStepId !== previousStepId) {
+          flowState.value = backendState
+          commentDraft.value = ''
+          emit('updated', refreshed)
+          toast.success('បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់')
+          return
+        }
+      }
+    } catch (_syncError) {
+      // ignore sync error, show original error below
+    }
+
     toast.error(getRequestErrorMessage(error, 'មិនអាចបញ្ជូនលំហូរឯកសារបានទេ'))
   } finally {
     isSubmittingWorkflow.value = false

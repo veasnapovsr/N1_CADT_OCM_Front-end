@@ -3,8 +3,8 @@ const STORAGE_KEY = 'document-flow-state-v1'
 export const FLOW_STEP_TITLES = [
   'នាយកដ្ឋានរដ្ឋបាល',
   'ប្រធាននាយកដ្ឋាន',
-  'ខុទ្ទកាល័យ',
-  'អគ្គនាយកដ្ឋាន',
+  'នាយកខុទ្ទកាល័យ',
+  'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
   'អង្គភាពជំនាញ'
 ]
 
@@ -29,6 +29,7 @@ const FLOW_STEP_MATCHERS = {
     'head.department'
   ],
   3: [
+    'នាយកខុទ្ទកាល័យ',
     'ខុទ្ទកាល័យ',
     'cabinet director',
     'director of cabinet',
@@ -44,16 +45,16 @@ const FLOW_STEP_MATCHERS = {
     'chief.cabinet'
   ],
   4: [
-    'អគ្គនាយកដ្ឋាន',
-    'general department',
-    'general directorate',
-    'director general',
-    'general_department',
-    'general.department',
-    'general_directorate',
-    'general.directorate',
-    'director_general',
-    'director.general'
+    'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+    'office dpm',
+    'office of dpm',
+    'office of deputy prime minister',
+    'deputy prime minister office',
+    'deputy prime minister office in charge',
+    'office_dpm',
+    'office.dpm',
+    'dpm office',
+    'ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ'
   ],
   5: [
     'អង្គភាពជំនាញ',
@@ -111,7 +112,15 @@ const mergeStoredCommentsIntoFlowState = (baseFlowState, storedFlowState) => {
 
   const nextState = cloneDeep(baseFlowState)
 
-const getFlowProgressSignature = (flowState = {}) => {
+  nextState.steps = nextState.steps.map((step, index) => ({
+    ...step,
+    comments: mergeStepComments(step.comments, storedFlowState.steps[index]?.comments || [])
+  }))
+
+  return nextState
+}
+
+export const getFlowProgressSignature = (flowState = {}) => {
   const steps = Array.isArray(flowState?.steps) ? flowState.steps : []
   const completedCount = steps.filter((step) => step.status === 'completed').length
   const returnedCount = steps.filter((step) => step.status === 'returned').length
@@ -146,12 +155,6 @@ const mergeStoredProgressIntoFlowState = (baseFlowState, storedFlowState) => {
   nextState.updatedAt = storedFlowState?.updatedAt || nextState.updatedAt
 
   return finalizeFlowState(nextState, nextState.overallStatus)
-}
-  nextState.steps = nextState.steps.map((step, index) => ({
-    ...step,
-    comments: mergeStepComments(step.comments, storedFlowState.steps[index]?.comments || [])
-  }))
-  return nextState
 }
 
 const collectNestedTexts = (value, depth = 0) => {
@@ -724,8 +727,12 @@ export const canUserUseExplicitFlowActions = (user = {}) => {
     .filter(Boolean)
 
   return sourceTexts.some((text) => (
-    text.includes('general department')
-    || text.includes('អគ្គនាយកដ្ឋាន')
+    text.includes('office dpm')
+    || text.includes('office of dpm')
+    || text.includes('office of deputy prime minister')
+    || text.includes('deputy prime minister office')
+    || text.includes('ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ')
+    || text.includes('ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ')
   ))
 }
 
