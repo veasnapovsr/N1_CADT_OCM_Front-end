@@ -43,14 +43,6 @@
                 </p>
               </div>
 
-              <button
-                v-if="canSendBack && currentStep?.id === step.id"
-                type="button"
-                class="dc_action-link"
-                @click="handleSendBack"
-              >
-                ↩ បញ្ជូនទៅវិញ
-              </button>
             </div>
 
             <span v-if="step.actedAt" class="text-xs text-slate-500 block mt-1">
@@ -128,6 +120,36 @@
         </label>
       </div>
 
+      <div v-if="currentStep && canChooseFinalDecision" class="dc_flow_choice">
+        <p class="dc_flow_choice_label">ជ្រើសរើសការសម្រេចចុងក្រោយ</p>
+
+        <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'send' }">
+          <input
+            v-model="selectedFlowAction"
+            type="radio"
+            value="send"
+            :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
+          />
+          <span>
+            <strong>បញ្ជូនត្រឡប់ទៅខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ</strong>
+            <small>បញ្ជូនឯកសារត្រឡប់ទៅវដ្តពិនិត្យឡើងវិញ</small>
+          </span>
+        </label>
+
+        <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'approve' }">
+          <input
+            v-model="selectedFlowAction"
+            type="radio"
+            value="approve"
+            :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
+          />
+          <span>
+            <strong>អនុម័តបញ្ចប់</strong>
+            <small>បញ្ចប់លំហូរឯកសារនេះជាស្ថាពរ</small>
+          </span>
+        </label>
+      </div>
+
       <div class="dc_composer_actions">
         <button
           type="button"
@@ -142,7 +164,7 @@
           v-if="currentStep"
           type="button"
           class="inline-flex items-center btn_dc btn_dc--primary"
-          :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
+          :disabled="primaryActionDisabled"
           @click="handleForward"
         >
           {{ primaryActionLabel }}
@@ -158,6 +180,7 @@ import { useStore } from 'vuex'
 import { toast } from 'vue-sonner'
 import { formatDateKhmer, formatKhmerNumber } from '@/lib/utils'
 import {
+  FLOW_APPROVAL_STEP_ID,
   FLOW_BRANCH_STEP_ID,
   addCommentToCurrentFlowStep,
   buildDocumentFlowState,
@@ -187,17 +210,22 @@ const props = defineProps({
 
 const emit = defineEmits(['updated'])
 
-const flowState = ref(getStoredDocumentFlowState(props.documentId, props.transaction))
 const commentDraft = ref('')
 const isSubmittingWorkflow = ref(false)
 const selectedFlowAction = ref('send')
+const documentFlowStorageKey = computed(() => (
+  props.transaction?.document?.id
+  ?? props.transaction?.document_id
+  ?? props.documentId
+))
+const flowState = ref(getStoredDocumentFlowState(documentFlowStorageKey.value, props.transaction))
 
 const syncFlowState = () => {
-  flowState.value = getStoredDocumentFlowState(props.documentId, props.transaction)
+  flowState.value = getStoredDocumentFlowState(documentFlowStorageKey.value, props.transaction)
 }
 
 watch(
-  () => [props.documentId, props.transaction?.id, props.transaction?.updated_at],
+  () => [props.documentId, documentFlowStorageKey.value, props.transaction?.id, props.transaction?.updated_at],
   () => {
     syncFlowState()
     commentDraft.value = ''
@@ -211,7 +239,6 @@ const currentStep = computed(() => flowSteps.value.find((step) => step.id === fl
 const currentUser = computed(() => getUser() || {})
 const userIsAdmin = computed(() => isAdmin())
 const canUseExplicitFlowActions = computed(() => canUserUseExplicitFlowActions(currentUser.value))
-const transactionReceivers = computed(() => Array.isArray(props.transaction?.receivers) ? props.transaction.receivers : [])
 const normalizeIdentityValue = (value) => String(value ?? '').trim().toLowerCase()
 const currentUserIdentitySet = computed(() => {
   const user = currentUser.value || {}
@@ -227,66 +254,52 @@ const currentUserIdentitySet = computed(() => {
     fullName
   ].map((value) => normalizeIdentityValue(value)).filter(Boolean))
 })
-const currentActionableReceiverByIdentity = computed(() => transactionReceivers.value.find((receiver) => {
-  const receiverStatus = String(receiver?.status || receiver?.action || receiver?.state || '').trim().toLowerCase()
-  if (!['current', 'progressing', 'in_progress', 'processing', 'waiting', 'pending'].includes(receiverStatus)) {
-    return false
-  }
-
-  const receiverUser = receiver?.user || receiver || {}
-  const receiverFullName = receiverUser.lastname && receiverUser.firstname
-    ? `${receiverUser.lastname} ${receiverUser.firstname}`
-    : receiverUser.fullname || receiverUser.name || ''
-  const receiverIdentities = [
-    receiverUser.id,
-    receiver.user_id,
-    receiver.receiver_id,
-    receiverUser.username,
-    receiverUser.email,
-    receiverFullName
-  ].map((value) => normalizeIdentityValue(value)).filter(Boolean)
-
-  return receiverIdentities.some((value) => currentUserIdentitySet.value.has(value))
-}))
 const allowedStepIds = computed(() => getAllowedFlowStepIds(currentUser.value, { isAdmin: userIsAdmin.value }))
 const canActOnCurrentStep = computed(() => Boolean(currentStep.value && allowedStepIds.value.includes(currentStep.value.id)))
-const canSendBack = computed(() => Boolean(canActOnCurrentStep.value && currentStep.value && currentStep.value.id > 1))
 const canChooseFlowBranch = computed(() => Boolean(
   canUseExplicitFlowActions.value
   && currentStep.value
   && currentStep.value.id === FLOW_BRANCH_STEP_ID
 ))
+const canChooseFinalDecision = computed(() => Boolean(
+  canActOnCurrentStep.value
+  && currentStep.value
+  && currentStep.value.id === FLOW_APPROVAL_STEP_ID
+))
 const normalizedSelectedFlowAction = computed(() => {
+  if (canChooseFinalDecision.value) {
+    return selectedFlowAction.value === 'approve' ? 'approve' : 'send'
+  }
+
   if (!canChooseFlowBranch.value) {
     return 'send'
   }
 
   return selectedFlowAction.value === 'diy' ? 'diy' : 'send'
 })
+const requiresWorkflowComment = computed(() => Boolean(
+  currentStep.value
+  && [FLOW_APPROVAL_STEP_ID, FLOW_BRANCH_STEP_ID, 5].includes(currentStep.value.id)
+))
+const primaryActionDisabled = computed(() => (
+  !canActOnCurrentStep.value
+  || isSubmittingWorkflow.value
+  || (requiresWorkflowComment.value && !commentDraft.value.trim())
+))
 const primaryActionLabel = computed(() => {
+  if (canChooseFinalDecision.value) {
+    return normalizedSelectedFlowAction.value === 'approve'
+      ? 'អនុម័តបញ្ចប់'
+      : 'បញ្ជូនត្រឡប់'
+  }
+
   if (!canChooseFlowBranch.value) {
-    return 'បញ្ជូនបន្ត'
+    return currentStep.value?.id === 5 ? 'បញ្ជូនត្រឡប់ទៅខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ' : 'បញ្ជូនបន្ត'
   }
 
   return normalizedSelectedFlowAction.value === 'diy'
     ? 'ដំណើរការដោយខ្លួនឯង'
     : 'បញ្ជូនបន្ត'
-})
-const currentStepReceiver = computed(() => {
-  const stepId = currentStep.value?.id
-  if (!stepId || stepId <= 1) {
-    return null
-  }
-
-  return transactionReceivers.value[stepId - 2] || currentActionableReceiverByIdentity.value || null
-})
-const nextStepReceiver = computed(() => {
-  const stepId = currentStep.value?.id
-  if (!stepId || stepId >= flowSteps.value.length) {
-    return null
-  }
-
-  return transactionReceivers.value[stepId - 1] || null
 })
 const permissionHint = computed(() => {
   if (!currentStep.value) {
@@ -311,27 +324,7 @@ const currentActorName = computed(() => {
 })
 
 const buildWorkflowPayload = () => {
-  const currentReceiver = currentStepReceiver.value
-  const receiver = nextStepReceiver.value
-  const actionTransactionId = currentReceiver?.transaction_id
-    ?? currentReceiver?.document_transaction_id
-    ?? currentReceiver?.source_transaction_id
-    ?? currentReceiver?.current_transaction_id
-    ?? props.transaction?.id
-    ?? props.documentId
-    ?? currentReceiver?.id
-  const receiverIds = [
-    receiver?.user?.id,
-    receiver?.user_id,
-    receiver?.to_user_id,
-    receiver?.next_user_id,
-    receiver?.officer?.id,
-    receiver?.people?.id,
-    receiver?.receiver_id,
-    receiver?.id
-  ].filter((value) => value != null && value !== '')
-  const uniqueReceiverIds = Array.from(new Set(receiverIds))
-  const receiverId = uniqueReceiverIds[0] ?? null
+  const actionTransactionId = props.transaction?.id ?? props.documentId
   const payload = {
     id: actionTransactionId,
     transaction_id: actionTransactionId,
@@ -343,31 +336,6 @@ const buildWorkflowPayload = () => {
     comment: commentDraft.value,
     note: commentDraft.value,
     remark: commentDraft.value
-  }
-
-  if (currentReceiver?.id != null) {
-    payload.receiver_transaction_id = currentReceiver.id
-    payload.current_receiver_id = currentReceiver.id
-  }
-
-  if (normalizedSelectedFlowAction.value === 'send' && receiverId != null) {
-    payload.receiver_id = receiverId
-    payload.user_id = receiverId
-    payload.next_receiver_id = receiverId
-    payload.next_user_id = receiverId
-    payload.to_user_id = receiverId
-    payload.receivers = uniqueReceiverIds
-    payload.receiver_ids = uniqueReceiverIds
-
-    if (receiver?.organization_structure_position?.id != null) {
-      payload.organization_structure_position_id = receiver.organization_structure_position.id
-      payload.next_organization_structure_position_id = receiver.organization_structure_position.id
-    }
-
-    if (receiver?.officer?.id != null) {
-      payload.officer_id = receiver.officer.id
-      payload.next_officer_id = receiver.officer.id
-    }
   }
 
   return payload
@@ -392,7 +360,7 @@ const getRequestErrorMessage = (error, fallbackMessage) => {
 }
 
 const persistState = (nextState, successMessage) => {
-  const savedState = saveStoredDocumentFlowState(props.documentId, nextState)
+  const savedState = saveStoredDocumentFlowState(documentFlowStorageKey.value, nextState)
   flowState.value = savedState
   commentDraft.value = ''
   emit('updated', savedState)
@@ -421,10 +389,10 @@ const syncWithBackend = async (successMessage, fallbackFlowState = null) => {
   )
 
   if (shouldKeepOptimisticState) {
-    flowState.value = saveStoredDocumentFlowState(props.documentId, fallbackFlowState)
+    flowState.value = saveStoredDocumentFlowState(documentFlowStorageKey.value, fallbackFlowState)
   } else {
-    clearStoredDocumentFlowState(props.documentId)
-    flowState.value = getStoredDocumentFlowState(props.documentId, backendTransaction)
+    clearStoredDocumentFlowState(documentFlowStorageKey.value)
+    flowState.value = getStoredDocumentFlowState(documentFlowStorageKey.value, backendTransaction)
   }
 
   commentDraft.value = ''
@@ -451,7 +419,7 @@ const handleCommentOnly = async () => {
       actorName: currentActorName.value,
       message: commentDraft.value
     })
-    flowState.value = saveStoredDocumentFlowState(props.documentId, optimisticState)
+    flowState.value = saveStoredDocumentFlowState(documentFlowStorageKey.value, optimisticState)
 
     await syncWithBackend('បានរក្សាទុកមតិយោបល់', optimisticState)
   } catch (error) {
@@ -477,14 +445,19 @@ const handleForward = async () => {
 
     const optimisticFlowState = forwardCurrentFlowStep(flowState.value, {
       actorName: currentActorName.value,
-      message: commentDraft.value
+      message: commentDraft.value,
+      action: normalizedSelectedFlowAction.value
     })
-    flowState.value = saveStoredDocumentFlowState(props.documentId, optimisticFlowState)
+    flowState.value = saveStoredDocumentFlowState(documentFlowStorageKey.value, optimisticFlowState)
 
     await syncWithBackend(
-      normalizedSelectedFlowAction.value === 'diy'
+      normalizedSelectedFlowAction.value === 'approve'
+        ? 'បានអនុម័ត និងបញ្ចប់លំហូរឯកសារ'
+        : normalizedSelectedFlowAction.value === 'diy'
         ? 'បានរក្សាទុកឯកសារសម្រាប់ដំណើរការដោយខ្លួនឯង'
-        : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់',
+        : canChooseFinalDecision.value
+          ? 'បានបញ្ជូនឯកសារត្រឡប់ទៅវដ្តពិនិត្យ'
+          : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់',
       optimisticFlowState
     )
   } catch (error) {
@@ -496,14 +469,14 @@ const handleForward = async () => {
     try {
       const refreshed = await reloadTransaction()
       if (refreshed) {
-        clearStoredDocumentFlowState(props.documentId)
-        const backendState = getStoredDocumentFlowState(props.documentId, refreshed)
+        clearStoredDocumentFlowState(documentFlowStorageKey.value)
+        const backendState = getStoredDocumentFlowState(documentFlowStorageKey.value, refreshed)
         const previousStepId = flowState.value?.activeStepId
         if (backendState?.activeStepId && backendState.activeStepId !== previousStepId) {
           flowState.value = backendState
           commentDraft.value = ''
           emit('updated', refreshed)
-          toast.success('បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់')
+          toast.success(normalizedSelectedFlowAction.value === 'approve' ? 'បានអនុម័ត និងបញ្ចប់លំហូរឯកសារ' : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់')
           return
         }
       }
@@ -515,19 +488,6 @@ const handleForward = async () => {
   } finally {
     isSubmittingWorkflow.value = false
   }
-}
-
-const handleSendBack = () => {
-  if (!canActOnCurrentStep.value || isSubmittingWorkflow.value) {
-    return
-  }
-
-  const nextState = sendBackCurrentFlowStep(flowState.value, {
-    actorName: currentActorName.value,
-    message: commentDraft.value
-  })
-
-  persistState(nextState, 'បានបញ្ជូនឯកសារត្រឡប់ទៅជំហានមុន')
 }
 
 const formatActionTime = (value) => {

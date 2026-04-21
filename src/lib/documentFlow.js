@@ -8,6 +8,7 @@ export const FLOW_STEP_TITLES = [
   'អង្គភាពជំនាញ'
 ]
 
+export const FLOW_APPROVAL_STEP_ID = 3
 export const FLOW_BRANCH_STEP_ID = 4
 
 const FLOW_STEP_MATCHERS = {
@@ -120,6 +121,36 @@ const mergeStoredCommentsIntoFlowState = (baseFlowState, storedFlowState) => {
   }))
 
   return nextState
+}
+
+const getFlowUpdatedAtTimestamp = (flowState = {}) => {
+  const timestamp = new Date(flowState?.updatedAt || 0).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const shouldPreferStoredFlowState = (storedFlowState, backendFlowState) => {
+  if (!storedFlowState || !backendFlowState) {
+    return false
+  }
+
+  const storedStatus = normalizeText(storedFlowState?.overallStatus).toLowerCase()
+  const backendStatus = normalizeText(backendFlowState?.overallStatus).toLowerCase()
+  const storedUpdatedAt = getFlowUpdatedAtTimestamp(storedFlowState)
+  const backendUpdatedAt = getFlowUpdatedAtTimestamp(backendFlowState)
+
+  if (storedUpdatedAt > 0 && backendUpdatedAt > 0 && storedUpdatedAt < backendUpdatedAt) {
+    return false
+  }
+
+  if (storedStatus === 'approved' && backendStatus !== 'approved') {
+    return false
+  }
+
+  if (storedStatus === 'rejected' && backendStatus === 'pending') {
+    return false
+  }
+
+  return getFlowProgressSignature(storedFlowState) > getFlowProgressSignature(backendFlowState)
 }
 
 export const getFlowProgressSignature = (flowState = {}) => {
@@ -238,7 +269,7 @@ const normalizeReceiverStatus = (value) => {
     return 'pending'
   }
 
-  if (['approved', 'approve', 'sent', 'done', 'completed', 'complete', 'accepted'].includes(status)) {
+  if (['approved', 'approve', 'sent', 'done', 'completed', 'complete', 'accepted', 'finished', 'finish'].includes(status)) {
     return 'completed'
   }
 
@@ -415,9 +446,59 @@ const reconcileOrderedStepStatuses = (steps = []) => {
   return steps
 }
 
+const isApprovedFlowStatus = (value = '') => ['approved', 'approve', 'finished', 'finish', 'done', 'completed', 'complete', 'accepted']
+  .includes(normalizeText(value).toLowerCase())
+
+const getStepActedTimestamp = (step = {}) => {
+  const timestamp = new Date(step?.actedAt || step?.updatedAt || step?.createdAt || 0).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const resolveOfficeDpmSourceStepId = (flowState = {}) => {
+  const steps = Array.isArray(flowState?.steps) ? flowState.steps : []
+  const cabinetDirectorStep = steps.find((step) => step.id === FLOW_APPROVAL_STEP_ID)
+  const specialistUnitStep = steps.find((step) => step.id === 5)
+  const cabinetDirectorTimestamp = getStepActedTimestamp(cabinetDirectorStep)
+  const specialistUnitTimestamp = getStepActedTimestamp(specialistUnitStep)
+
+  if (specialistUnitTimestamp > cabinetDirectorTimestamp) {
+    return 5
+  }
+
+  if (cabinetDirectorTimestamp > 0) {
+    return FLOW_APPROVAL_STEP_ID
+  }
+
+  return FLOW_APPROVAL_STEP_ID
+}
+
+const resolveForwardTargetStepId = (flowState = {}, action = 'send') => {
+  const activeStepId = Number(flowState?.activeStepId) || 0
+  const normalizedAction = normalizeText(action).toLowerCase()
+
+  if (!activeStepId || normalizedAction === 'approve') {
+    return 0
+  }
+
+  switch (activeStepId) {
+    case 1:
+      return 2
+    case 2:
+      return FLOW_APPROVAL_STEP_ID
+    case FLOW_APPROVAL_STEP_ID:
+      return FLOW_BRANCH_STEP_ID
+    case FLOW_BRANCH_STEP_ID:
+      return resolveOfficeDpmSourceStepId(flowState) === 5 ? FLOW_APPROVAL_STEP_ID : 5
+    case 5:
+      return FLOW_BRANCH_STEP_ID
+    default:
+      return 0
+  }
+}
+
 const finalizeFlowState = (flowState, baseStatus = '') => {
   const nextState = cloneDeep(flowState)
-  const approved = normalizeText(baseStatus).toLowerCase() === 'approved'
+  const approved = isApprovedFlowStatus(baseStatus)
 
   if (approved) {
     nextState.steps.forEach((step) => {
@@ -464,14 +545,111 @@ const finalizeFlowState = (flowState, baseStatus = '') => {
   return nextState
 }
 
+const getWorkflowTransactionChain = (transaction = {}) => {
+  const transactions = Array.isArray(transaction?.transactions) ? transaction.transactions : []
+  const chain = [...transactions]
+
+  if (transaction && typeof transaction === 'object') {
+    const transactionId = Number.parseInt(transaction?.id, 10)
+    if (transactionId > 0 && !chain.some((entry) => Number.parseInt(entry?.id, 10) === transactionId)) {
+      chain.push(transaction)
+    }
+  }
+
+  return chain
+    .filter((entry) => entry && typeof entry === 'object')
+    .sort((left, right) => (Number.parseInt(left?.id, 10) || 0) - (Number.parseInt(right?.id, 10) || 0))
+}
+
+const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] } = {}) => {
+  if (!transactions.length) {
+    return { latestTransaction: null, hasProgress: false }
+  }
+
+  let hasProgress = false
+
+  transactions.forEach((entry, index) => {
+    const isLatestTransaction = index === transactions.length - 1
+    const transactionStatus = normalizeText(entry?.status).toLowerCase()
+    const sender = entry?.sender || {}
+    const senderName = extractDisplayName(sender)
+    const senderStepId = getPreferredWorkflowStepId(sender)
+    const receivers = Array.isArray(entry?.receivers) ? entry.receivers : []
+    const actedAt = entry?.sent_at || entry?.updated_at || entry?.created_at || entry?.date_in || ''
+
+    if (senderStepId > 0) {
+      hasProgress = true
+
+      for (let stepIndex = 0; stepIndex < senderStepId - 1; stepIndex += 1) {
+        if (steps[stepIndex]?.status === 'pending') {
+          steps[stepIndex].status = 'completed'
+        }
+      }
+
+      const senderStep = steps[senderStepId - 1]
+      if (senderStep) {
+        senderStep.assigneeName = senderName || senderStep.assigneeName
+        senderStep.actedBy = senderName || senderStep.actedBy
+        senderStep.actedAt = actedAt || senderStep.actedAt
+        senderStep.status = isLatestTransaction && ['draft', 'progress'].includes(transactionStatus) && !receivers.length
+          ? 'current'
+          : 'completed'
+      }
+    }
+
+    receivers.forEach((receiver) => {
+      const receiverSource = receiver?.user || receiver || {}
+      const receiverStepId = getPreferredWorkflowStepId(receiverSource)
+      if (receiverStepId <= 0) {
+        return
+      }
+
+      hasProgress = true
+
+      const receiverStep = steps[receiverStepId - 1]
+      if (!receiverStep) {
+        return
+      }
+
+      const receiverName = extractDisplayName(receiverSource)
+      const receiverActedAt = receiver?.accepted_at || receiver?.updated_at || receiver?.created_at || actedAt || ''
+      const receiverComments = extractComments(receiver)
+
+      receiverStep.assigneeName = receiverName || receiverStep.assigneeName
+      receiverStep.comments = mergeStepComments(receiverStep.comments, receiverComments)
+
+      if (isLatestTransaction && transactionStatus === 'pending' && !receiver?.accepted_at) {
+        receiverStep.status = 'current'
+        receiverStep.actedAt = receiver?.updated_at || receiver?.created_at || receiverStep.actedAt
+        return
+      }
+
+      receiverStep.status = 'completed'
+      receiverStep.actedBy = receiverName || receiverStep.actedBy
+      receiverStep.actedAt = receiverActedAt || receiverStep.actedAt
+    })
+  })
+
+  return {
+    latestTransaction: transactions[transactions.length - 1],
+    hasProgress
+  }
+}
+
 export const buildDocumentFlowState = (transaction = {}) => {
-  const transactionStatus = normalizeText(transaction?.status).toLowerCase()
-  const receivers = Array.isArray(transaction?.receivers) ? transaction.receivers : []
+  const transactionChain = getWorkflowTransactionChain(transaction)
+  const latestTransaction = transactionChain[transactionChain.length - 1] || transaction
+  const transactionStatus = normalizeText(latestTransaction?.status).toLowerCase()
+  const receivers = Array.isArray(latestTransaction?.receivers) ? latestTransaction.receivers : []
   const steps = FLOW_STEP_TITLES.map((title, index) => buildStepRecord(index, title))
-  const senderName = extractDisplayName(transaction?.sender)
-  const createdAt = transaction?.created_at || transaction?.sent_at || transaction?.date_in || ''
-  const hasIdentityProgress = applyWorkflowIdentityProgress({
-    transaction,
+  const senderName = extractDisplayName(latestTransaction?.sender)
+  const createdAt = latestTransaction?.created_at || latestTransaction?.sent_at || latestTransaction?.date_in || ''
+  const chainProgress = applyWorkflowTransactionChainProgress({
+    transactions: transactionChain,
+    steps
+  })
+  const hasIdentityProgress = chainProgress.hasProgress || applyWorkflowIdentityProgress({
+    transaction: latestTransaction,
     transactionStatus,
     steps,
     senderName,
@@ -508,16 +686,16 @@ export const buildDocumentFlowState = (transaction = {}) => {
     })
   }
 
-  applyDocumentBriefingsToSteps(transaction, steps)
+  applyDocumentBriefingsToSteps(latestTransaction?.document?.briefings ? latestTransaction : transaction, steps)
 
   reconcileOrderedStepStatuses(steps)
 
   return finalizeFlowState({
-    documentId: Number.parseInt(transaction?.id, 10) || 0,
+    documentId: Number.parseInt(latestTransaction?.document?.id ?? transaction?.document?.id ?? latestTransaction?.id ?? transaction?.id, 10) || 0,
     activeStepId: null,
     currentRecipient: '',
     overallStatus: transactionStatus || 'pending',
-    updatedAt: toIsoString(transaction?.updated_at || createdAt || ''),
+    updatedAt: toIsoString(latestTransaction?.updated_at || createdAt || ''),
     steps
   }, transactionStatus)
 }
@@ -530,7 +708,7 @@ export const getStoredDocumentFlowState = (documentId, transaction = null) => {
   if (transaction && typeof transaction === 'object') {
     const backendState = buildDocumentFlowState(transaction)
     if (storedValue && typeof storedValue === 'object') {
-      return getFlowProgressSignature(storedValue) > getFlowProgressSignature(backendState)
+      return shouldPreferStoredFlowState(storedValue, backendState)
         ? mergeStoredProgressIntoFlowState(backendState, storedValue)
         : mergeStoredCommentsIntoFlowState(backendState, storedValue)
     }
@@ -597,7 +775,7 @@ export const addCommentToCurrentFlowStep = (flowState, { actorName = '', message
   return nextState
 }
 
-export const forwardCurrentFlowStep = (flowState, { actorName = '', message = '' } = {}) => {
+export const forwardCurrentFlowStep = (flowState, { actorName = '', message = '', action = 'send' } = {}) => {
   const nextState = cloneDeep(flowState)
   const activeIndex = nextState.steps.findIndex((step) => step.id === nextState.activeStepId)
   if (activeIndex < 0) {
@@ -606,20 +784,31 @@ export const forwardCurrentFlowStep = (flowState, { actorName = '', message = ''
 
   const now = toIsoString()
   const currentStep = nextState.steps[activeIndex]
+  const normalizedAction = normalizeText(action).toLowerCase() || 'send'
   if (normalizeText(message)) {
     currentStep.comments.push(createCommentEntry({
-      type: activeIndex === nextState.steps.length - 1 ? 'approve' : 'forward',
+      type: normalizedAction === 'approve' ? 'approve' : 'forward',
       message,
       actorName,
       createdAt: now
     }))
   }
 
+  if (normalizedAction === 'diy') {
+    currentStep.actedBy = normalizeText(actorName) || currentStep.actedBy
+    currentStep.actedAt = now
+    nextState.activeStepId = currentStep.id
+    nextState.currentRecipient = currentStep.title
+    nextState.overallStatus = 'pending'
+    nextState.updatedAt = now
+    return nextState
+  }
+
   currentStep.status = 'completed'
   currentStep.actedBy = normalizeText(actorName) || currentStep.actedBy
   currentStep.actedAt = now
 
-  if (activeIndex >= nextState.steps.length - 1) {
+  if (normalizedAction === 'approve') {
     nextState.activeStepId = null
     nextState.currentRecipient = ''
     nextState.overallStatus = 'approved'
@@ -627,7 +816,16 @@ export const forwardCurrentFlowStep = (flowState, { actorName = '', message = ''
     return nextState
   }
 
-  const nextStep = nextState.steps[activeIndex + 1]
+  const nextStepId = resolveForwardTargetStepId(nextState, normalizedAction)
+  const nextStep = nextState.steps.find((step) => step.id === nextStepId)
+  if (!nextStep) {
+    nextState.activeStepId = null
+    nextState.currentRecipient = ''
+    nextState.overallStatus = 'approved'
+    nextState.updatedAt = now
+    return nextState
+  }
+
   nextStep.status = 'current'
   nextState.activeStepId = nextStep.id
   nextState.currentRecipient = nextStep.title
@@ -672,12 +870,13 @@ export const applyDocumentFlowListOverride = (documentRecord) => {
     return documentRecord
   }
 
-  if (documentRecord?.status || documentRecord?.transaction || documentRecord?.raw) {
-    return documentRecord
-  }
+  const sourceTransaction = documentRecord?.transaction || documentRecord?.raw || null
+  const flowState = documentRecord?.flowState
+    ? finalizeFlowState(documentRecord.flowState, documentRecord.flowState.overallStatus)
+    : sourceTransaction
+      ? buildDocumentFlowState(sourceTransaction)
+      : readStore()[String(documentId)]
 
-  const store = readStore()
-  const flowState = store[String(documentId)]
   if (!flowState) {
     return documentRecord
   }
@@ -685,6 +884,7 @@ export const applyDocumentFlowListOverride = (documentRecord) => {
   const normalizedState = finalizeFlowState(flowState, flowState.overallStatus)
   return {
     ...documentRecord,
+    flowState: normalizedState,
     status: normalizedState.overallStatus || documentRecord.status,
     sentTo: normalizedState.currentRecipient || documentRecord.sentTo
   }
