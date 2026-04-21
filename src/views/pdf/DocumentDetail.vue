@@ -120,6 +120,12 @@ import Aside from '@/components/Aside.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
 import DocumentTimeline from '@/components/DocumentTimeline.vue'
 
+const RAW_API_SERVER = import.meta.env.VITE_API_SERVER || ''
+const API_SERVER = /^https?:\/\//i.test(RAW_API_SERVER)
+  ? RAW_API_SERVER.replace(/\/$/, '')
+  : new URL(RAW_API_SERVER, import.meta.env.VITE_API_PROXY_TARGET || window.location.origin).toString().replace(/\/$/, '')
+const API_BASE_URL = API_SERVER.replace(/\/api\/authcenter$/i, '')
+
 const store = useStore()
 const route = useRoute()
 
@@ -130,9 +136,54 @@ const fileInput = ref(null)
 const documentTransaction = ref(null)
 const documentTransactionId = ref(Number(route.params.id) || 0)
 
+const resolveDocumentAssetUrl = (value) => {
+  const source = typeof value === 'string' ? value.trim() : ''
+
+  if (!source) {
+    return ''
+  }
+
+  if (
+    source.startsWith('http://') ||
+    source.startsWith('https://') ||
+    source.startsWith('data:') ||
+    source.startsWith('blob:')
+  ) {
+    if (source.startsWith('data:') || source.startsWith('blob:')) {
+      return source
+    }
+
+    try {
+      const url = new URL(source)
+
+      if (url.origin === API_BASE_URL && url.pathname.startsWith('/storage/')) {
+        return `${url.pathname}${url.search}${url.hash}`
+      }
+
+      return source
+    } catch {
+      return source
+    }
+  }
+
+  if (source.startsWith('/storage/')) {
+    return source
+  }
+
+  if (source.startsWith('storage/')) {
+    return `/${source}`
+  }
+
+  if (source.startsWith('/')) {
+    return `${API_BASE_URL}${source}`
+  }
+
+  return `/storage/${source.replace(/^storage\//, '')}`
+}
+
 const wordFileUrl = computed(() => {
   const url = documentTransaction.value?.document?.word_file
-  return url && typeof url === 'string' && url.trim() ? url.trim() : null
+  return url && typeof url === 'string' && url.trim() ? resolveDocumentAssetUrl(url) : null
 })
 
 const creatorName = computed(() => {
@@ -207,7 +258,7 @@ const loadData = async () => {
     documentTransaction.value = record || null
 
     if (doc?.pdf_file?.trim()) {
-      pdfSrc.value = doc.pdf_file.trim()
+      pdfSrc.value = resolveDocumentAssetUrl(doc.pdf_file)
     } else {
       pdfSrc.value = '/docs/report2.pdf'
     }

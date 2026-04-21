@@ -434,17 +434,32 @@ const syncWithBackend = async (successMessage, fallbackFlowState = null) => {
   }
 }
 
-const handleCommentOnly = () => {
-  if (!canActOnCurrentStep.value || !commentDraft.value.trim()) {
+const handleCommentOnly = async () => {
+  if (!canActOnCurrentStep.value || !commentDraft.value.trim() || isSubmittingWorkflow.value) {
     return
   }
 
-  const nextState = addCommentToCurrentFlowStep(flowState.value, {
-    actorName: currentActorName.value,
-    message: commentDraft.value
-  })
+  isSubmittingWorkflow.value = true
 
-  persistState(nextState, 'បានរក្សាទុកមតិយោបល់')
+  try {
+    await store.dispatch('transaction/addBriefing', {
+      document_id: props.transaction?.document?.id ?? props.transaction?.document_id,
+      briefing: commentDraft.value.trim()
+    })
+
+    const optimisticState = addCommentToCurrentFlowStep(flowState.value, {
+      actorName: currentActorName.value,
+      message: commentDraft.value
+    })
+    flowState.value = saveStoredDocumentFlowState(props.documentId, optimisticState)
+
+    await syncWithBackend('បានរក្សាទុកមតិយោបល់', optimisticState)
+  } catch (error) {
+    console.error(error)
+    toast.error(getRequestErrorMessage(error, 'មិនអាចរក្សាទុកមតិយោបល់បានទេ'))
+  } finally {
+    isSubmittingWorkflow.value = false
+  }
 }
 
 const handleForward = async () => {

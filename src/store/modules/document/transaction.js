@@ -142,6 +142,12 @@ const actions = {
       normalizeWorkflowAction(params, 'send')
     )
   },
+  async addBriefing ({ state }, params) {
+    return await crud.create(
+      import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/briefing',
+      params
+    )
+  },
   /** GET documents/transactions/getTotalByStatus -> { ok, records: { draft, pending, approved, rejected }, message } */
   async getTotalByStatus ({ state, commit, rootState }) {
     return await crud.read(import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/getTotalByStatus')

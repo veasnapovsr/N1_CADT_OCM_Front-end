@@ -46,6 +46,7 @@ const FLOW_STEP_MATCHERS = {
   ],
   4: [
     'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+    'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្រ្តីប្រចាំការ',
     'office dpm',
     'office of dpm',
     'office of deputy prime minister',
@@ -54,7 +55,8 @@ const FLOW_STEP_MATCHERS = {
     'office_dpm',
     'office.dpm',
     'dpm office',
-    'ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ'
+    'ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+    'ឧបនាយករដ្ឋមន្រ្តីប្រចាំការ'
   ],
   5: [
     'អង្គភាពជំនាញ',
@@ -292,6 +294,98 @@ const buildStepRecord = (index, title) => ({
   comments: []
 })
 
+const applyDocumentBriefingsToSteps = (transaction = {}, steps = []) => {
+  const briefings = Array.isArray(transaction?.document?.briefings) ? transaction.document.briefings : []
+
+  briefings.forEach((briefing) => {
+    const commentMessage = briefing?.briefing || briefing?.message || briefing?.comment || ''
+    if (!normalizeText(commentMessage)) {
+      return
+    }
+
+    const briefer = briefing?.briefer || briefing?.user || {}
+    const preferredStepId = getPreferredWorkflowStepId(briefer)
+    const currentStepIndex = steps.findIndex((step) => step.status === 'current')
+    const targetIndex = preferredStepId > 0
+      ? preferredStepId - 1
+      : currentStepIndex >= 0
+        ? currentStepIndex
+        : 0
+    const targetStep = steps[targetIndex]
+
+    if (!targetStep) {
+      return
+    }
+
+    targetStep.comments = mergeStepComments(targetStep.comments, [createCommentEntry({
+      type: 'comment',
+      message: commentMessage,
+      actorName: extractDisplayName(briefer),
+      createdAt: briefing?.created_at || briefing?.updated_at || ''
+    })])
+  })
+
+  return steps
+}
+
+const getPreferredWorkflowStepId = (source = {}) => {
+  const matchedStepIds = getAllowedFlowStepIds(source)
+  return matchedStepIds.length ? Math.max(...matchedStepIds) : 0
+}
+
+const applyWorkflowIdentityProgress = ({ transaction = {}, transactionStatus = '', steps = [], senderName = '', createdAt = '' } = {}) => {
+  const receivers = Array.isArray(transaction?.receivers) ? transaction.receivers : []
+  const senderStepId = getPreferredWorkflowStepId(transaction?.sender || {})
+  let hasIdentityProgress = false
+
+  if (senderStepId > 0) {
+    hasIdentityProgress = true
+
+    for (let index = 0; index < senderStepId - 1; index += 1) {
+      steps[index].status = 'completed'
+    }
+
+    const senderStep = steps[senderStepId - 1]
+    if (senderStep) {
+      senderStep.assigneeName = senderName
+      senderStep.actedBy = senderName
+      senderStep.actedAt = createdAt
+      senderStep.status = transactionStatus === 'draft' && !receivers.length ? 'current' : 'completed'
+    }
+  }
+
+  receivers.forEach((receiver) => {
+    const receiverSource = receiver?.user || receiver || {}
+    const receiverStepId = getPreferredWorkflowStepId(receiverSource)
+    if (receiverStepId <= 0) {
+      return
+    }
+
+    const step = steps[receiverStepId - 1]
+    if (!step) {
+      return
+    }
+
+    hasIdentityProgress = true
+
+    const receiverName = extractDisplayName(receiverSource)
+    const comments = extractComments(receiver)
+    const status = normalizeReceiverStatus(receiver?.status || receiver?.action || receiver?.state)
+
+    step.assigneeName = receiverName
+    step.comments = comments
+    step.actedAt = receiver?.updated_at || receiver?.acted_at || receiver?.created_at || ''
+
+    if (status === 'completed' || status === 'returned') {
+      step.actedBy = receiverName
+    }
+
+    step.status = status
+  })
+
+  return hasIdentityProgress
+}
+
 const reconcileOrderedStepStatuses = (steps = []) => {
   let furthestProgressIndex = -1
 
@@ -376,37 +470,45 @@ export const buildDocumentFlowState = (transaction = {}) => {
   const steps = FLOW_STEP_TITLES.map((title, index) => buildStepRecord(index, title))
   const senderName = extractDisplayName(transaction?.sender)
   const createdAt = transaction?.created_at || transaction?.sent_at || transaction?.date_in || ''
+  const hasIdentityProgress = applyWorkflowIdentityProgress({
+    transaction,
+    transactionStatus,
+    steps,
+    senderName,
+    createdAt
+  })
 
-  if (transactionStatus === 'draft' && !receivers.length) {
+  if (!hasIdentityProgress && transactionStatus === 'draft' && !receivers.length) {
     steps[0].assigneeName = senderName
     steps[0].status = 'current'
-  } else {
+  } else if (!hasIdentityProgress) {
     steps[0].assigneeName = senderName
     steps[0].actedBy = senderName
     steps[0].actedAt = createdAt
     steps[0].status = 'completed'
+    receivers.slice(0, Math.max(steps.length - 1, 0)).forEach((receiver, index) => {
+      const step = steps[index + 1]
+      if (!step) {
+        return
+      }
+
+      const receiverName = extractDisplayName(receiver?.user || receiver)
+      const comments = extractComments(receiver)
+      const status = normalizeReceiverStatus(receiver?.status || receiver?.action || receiver?.state)
+
+      step.assigneeName = receiverName
+      step.comments = comments
+      step.actedAt = receiver?.updated_at || receiver?.acted_at || receiver?.created_at || ''
+
+      if (status === 'completed' || status === 'returned') {
+        step.actedBy = receiverName
+      }
+
+      step.status = status
+    })
   }
 
-  receivers.slice(0, Math.max(steps.length - 1, 0)).forEach((receiver, index) => {
-    const step = steps[index + 1]
-    if (!step) {
-      return
-    }
-
-    const receiverName = extractDisplayName(receiver?.user || receiver)
-    const comments = extractComments(receiver)
-    const status = normalizeReceiverStatus(receiver?.status || receiver?.action || receiver?.state)
-
-    step.assigneeName = receiverName
-    step.comments = comments
-    step.actedAt = receiver?.updated_at || receiver?.acted_at || receiver?.created_at || ''
-
-    if (status === 'completed' || status === 'returned') {
-      step.actedBy = receiverName
-    }
-
-    step.status = status
-  })
+  applyDocumentBriefingsToSteps(transaction, steps)
 
   reconcileOrderedStepStatuses(steps)
 
@@ -710,6 +812,18 @@ const hasSharedIdentity = (left = {}, right = {}) => {
 }
 
 export const canUserUseExplicitFlowActions = (user = {}) => {
+  const roleTexts = [
+    user?.role_name,
+    user?.sub_role,
+    user?.position?.name,
+    user?.current_position,
+    ...collectNestedTexts(user?.roles),
+    ...collectNestedTexts(user?.position),
+    ...collectNestedTexts(user?.organization_structure_position)
+  ]
+    .map((value) => normalizeSearchText(value))
+    .filter(Boolean)
+
   const sourceTexts = [
     user?.role_name,
     user?.sub_role,
@@ -726,13 +840,30 @@ export const canUserUseExplicitFlowActions = (user = {}) => {
     .map((value) => normalizeSearchText(value))
     .filter(Boolean)
 
+  const isCabinetDirector = roleTexts.some((text) => (
+    text.includes('នាយកខុទ្ទកាល័យ')
+    || text.includes('cabinet director')
+    || text.includes('director of cabinet')
+    || text.includes('cabinet chief')
+    || text.includes('chief of cabinet')
+    || text.includes('director cabinet')
+    || text.includes('cabinet.director')
+    || text.includes('cabinet_director')
+  ))
+
+  if (isCabinetDirector) {
+    return false
+  }
+
   return sourceTexts.some((text) => (
     text.includes('office dpm')
     || text.includes('office of dpm')
     || text.includes('office of deputy prime minister')
     || text.includes('deputy prime minister office')
     || text.includes('ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ')
+    || text.includes('ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្រ្តីប្រចាំការ')
     || text.includes('ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ')
+    || text.includes('ឧបនាយករដ្ឋមន្រ្តីប្រចាំការ')
   ))
 }
 

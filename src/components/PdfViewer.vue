@@ -2,6 +2,12 @@
 import { ref, computed } from 'vue'
 import { PDFViewer } from '@embedpdf/vue-pdf-viewer'
 
+const RAW_API_SERVER = import.meta.env.VITE_API_SERVER || ''
+const API_SERVER = /^https?:\/\//i.test(RAW_API_SERVER)
+  ? RAW_API_SERVER.replace(/\/$/, '')
+  : new URL(RAW_API_SERVER, import.meta.env.VITE_API_PROXY_TARGET || window.location.origin).toString().replace(/\/$/, '')
+const API_BASE_URL = API_SERVER.replace(/\/api\/authcenter$/i, '')
+
 /* =========================
    PROPS
 ========================= */
@@ -25,18 +31,26 @@ const normalizedSrc = computed(() => {
     return source
   }
 
+  if (source.startsWith('http://') || source.startsWith('https://')) {
+    try {
+      const url = new URL(source)
+
+      if (url.origin === API_BASE_URL && url.pathname.startsWith('/storage/')) {
+        return `${url.pathname}${url.search}${url.hash}`
+      }
+
+      return source
+    } catch {
+      return source
+    }
+  }
+
   if (source.startsWith('/storage/')) {
     return source
   }
 
-  try {
-    const url = new URL(source, window.location.origin)
-
-    if (url.pathname.startsWith('/storage/')) {
-      return `${url.pathname}${url.search}${url.hash}`
-    }
-  } catch {
-    return source
+  if (source.startsWith('storage/')) {
+    return `/${source}`
   }
 
   return source

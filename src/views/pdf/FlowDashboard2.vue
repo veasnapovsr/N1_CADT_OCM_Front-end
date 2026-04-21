@@ -12,7 +12,6 @@ import { flowStats } from '@/data/Flowstatuscheck'
 import { formatKhmerNumber } from '@/lib/utils'
 import {
   applyDocumentFlowListOverride,
-  canUserAccessFlowRecord,
   dedupeWorkflowRecords,
   getStoredDocumentFlowState
 } from '@/lib/documentFlow'
@@ -172,7 +171,6 @@ const fetchPendingList = async () => {
             updatedAt: flowState?.updatedAt || r.updated_at || r.sent_at || r.created_at || ''
           })
         })
-        .filter((record) => canUserAccessFlowRecord(currentUser, record, { isAdmin: userIsAdmin }))
         .sort((left, right) => new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0))
     }
   } catch (err) {
