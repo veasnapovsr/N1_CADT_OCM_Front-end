@@ -1,5 +1,5 @@
 <template>
-  <Header title="លំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
+  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
 
   <section class="appppw">
     <Aside />
@@ -61,7 +61,7 @@
     </div>
   </section>
 </template>
-
+  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 

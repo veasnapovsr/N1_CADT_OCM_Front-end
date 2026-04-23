@@ -49,9 +49,9 @@
               {{ formatActionTime(step.actedAt) }}
             </span>
 
-            <div v-if="step.comments.length" class="dc_comments mt-3 space-y-2">
+            <div v-if="getVisibleStepComments(step).length" class="dc_comments mt-3 space-y-2">
               <div
-                v-for="entry in step.comments"
+                v-for="entry in getVisibleStepComments(step)"
                 :key="entry.id"
                 class="dc_comment"
                 :class="commentClass(entry.type)"
@@ -121,7 +121,7 @@
       </div>
 
       <div v-if="currentStep && canChooseFinalDecision" class="dc_flow_choice">
-        <p class="dc_flow_choice_label">ជ្រើសរើសការសម្រេចចុងក្រោយ</p>
+        <p class="dc_flow_choice_label">ជ្រើសរើសសកម្មភាពសម្រាប់នាយកខុទ្ទកាល័យ</p>
 
         <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'send' }">
           <input
@@ -132,7 +132,7 @@
           />
           <span>
             <strong>បញ្ជូនត្រឡប់ទៅខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ</strong>
-            <small>បញ្ជូនឯកសារត្រឡប់ទៅវដ្តពិនិត្យឡើងវិញ</small>
+            <small>បញ្ជូនត្រឡប់ទៅជំហានទី៦ ដើម្បីពិនិត្យបន្ថែមមុនបញ្ចប់</small>
           </span>
         </label>
 
@@ -212,7 +212,7 @@ const emit = defineEmits(['updated'])
 
 const commentDraft = ref('')
 const isSubmittingWorkflow = ref(false)
-const selectedFlowAction = ref('send')
+const selectedFlowAction = ref('')
 const documentFlowStorageKey = computed(() => (
   props.transaction?.document?.id
   ?? props.transaction?.document_id
@@ -224,12 +224,20 @@ const syncFlowState = () => {
   flowState.value = getStoredDocumentFlowState(documentFlowStorageKey.value, props.transaction)
 }
 
+const getInitialSelectedFlowAction = (stepId) => {
+  if (stepId === FLOW_APPROVAL_STEP_ID) {
+    return ''
+  }
+
+  return 'send'
+}
+
 watch(
   () => [props.documentId, documentFlowStorageKey.value, props.transaction?.id, props.transaction?.updated_at],
   () => {
     syncFlowState()
     commentDraft.value = ''
-    selectedFlowAction.value = 'send'
+    selectedFlowAction.value = getInitialSelectedFlowAction(flowState.value?.activeStepId)
   },
   { immediate: true }
 )
@@ -255,7 +263,28 @@ const currentUserIdentitySet = computed(() => {
   ].map((value) => normalizeIdentityValue(value)).filter(Boolean))
 })
 const allowedStepIds = computed(() => getAllowedFlowStepIds(currentUser.value, { isAdmin: userIsAdmin.value }))
-const canActOnCurrentStep = computed(() => Boolean(currentStep.value && allowedStepIds.value.includes(currentStep.value.id)))
+const currentStepAssigneeMatchesCurrentUser = computed(() => {
+  const step = currentStep.value
+  if (!step) {
+    return false
+  }
+
+  const assigneeCandidates = [
+    step.assigneeName,
+    step.actedBy
+  ].map((value) => normalizeIdentityValue(value)).filter(Boolean)
+
+  if (!assigneeCandidates.length) {
+    return true
+  }
+
+  return assigneeCandidates.some((value) => currentUserIdentitySet.value.has(value))
+})
+const canActOnCurrentStep = computed(() => Boolean(
+  currentStep.value
+  && allowedStepIds.value.includes(currentStep.value.id)
+  && currentStepAssigneeMatchesCurrentUser.value
+))
 const canChooseFlowBranch = computed(() => Boolean(
   canUseExplicitFlowActions.value
   && currentStep.value
@@ -268,7 +297,15 @@ const canChooseFinalDecision = computed(() => Boolean(
 ))
 const normalizedSelectedFlowAction = computed(() => {
   if (canChooseFinalDecision.value) {
-    return selectedFlowAction.value === 'approve' ? 'approve' : 'send'
+    if (selectedFlowAction.value === 'approve') {
+      return 'approve'
+    }
+
+    if (selectedFlowAction.value === 'send') {
+      return 'send'
+    }
+
+    return ''
   }
 
   if (!canChooseFlowBranch.value) {
@@ -277,20 +314,24 @@ const normalizedSelectedFlowAction = computed(() => {
 
   return selectedFlowAction.value === 'diy' ? 'diy' : 'send'
 })
-const requiresWorkflowComment = computed(() => Boolean(
+const requiresExplicitFlowChoice = computed(() => Boolean(
   currentStep.value
-  && [FLOW_APPROVAL_STEP_ID, FLOW_BRANCH_STEP_ID, 5].includes(currentStep.value.id)
+  && currentStep.value.id === FLOW_APPROVAL_STEP_ID
 ))
 const primaryActionDisabled = computed(() => (
   !canActOnCurrentStep.value
   || isSubmittingWorkflow.value
-  || (requiresWorkflowComment.value && !commentDraft.value.trim())
+  || (requiresExplicitFlowChoice.value && !normalizedSelectedFlowAction.value)
 ))
 const primaryActionLabel = computed(() => {
   if (canChooseFinalDecision.value) {
+    if (!normalizedSelectedFlowAction.value) {
+      return 'សូមជ្រើសរើសសកម្មភាព'
+    }
+
     return normalizedSelectedFlowAction.value === 'approve'
       ? 'អនុម័តបញ្ចប់'
-      : 'បញ្ជូនត្រឡប់'
+      : 'បញ្ជូនបន្ត'
   }
 
   if (!canChooseFlowBranch.value) {
@@ -308,6 +349,10 @@ const permissionHint = computed(() => {
 
   if (allowedStepIds.value.length === 0) {
     return `អ្នកមិនមានសិទ្ធិដំណើរការជំហាន ${currentStep.value.title} ទេ។`
+  }
+
+  if (!currentStepAssigneeMatchesCurrentUser.value) {
+    return `ជំហាន ${currentStep.value.title} ត្រូវបានផ្ទេរទៅអ្នកប្រើប្រាស់ផ្សេងរួចហើយ។`
   }
 
   return `អ្នកអាចដំណើរការបានតែជំហាន ${allowedStepIds.value.map((stepId) => flowSteps.value.find((step) => step.id === stepId)?.title).filter(Boolean).join(' / ')} ប៉ុណ្ណោះ។`
@@ -526,6 +571,28 @@ const getStepSubtitle = (step) => {
   }
 
   return step.assigneeName ? `រង់ចាំ • ${step.assigneeName}` : 'កំពុងរង់ចាំ'
+}
+
+const normalizeActorIdentity = (value) => String(value ?? '').trim().toLowerCase()
+
+const getStepActorName = (step) => {
+  return step.actedBy || step.assigneeName || ''
+}
+
+const getVisibleStepComments = (step) => {
+  const comments = Array.isArray(step?.comments) ? step.comments : []
+  const actorName = normalizeActorIdentity(getStepActorName(step))
+
+  if (!actorName) {
+    return comments
+  }
+
+  const matchedComments = comments.filter((entry) => {
+    const commentActor = normalizeActorIdentity(entry?.actorName)
+    return !commentActor || commentActor === actorName
+  })
+
+  return matchedComments.length ? matchedComments : comments
 }
 
 const circleClass = (status) => {

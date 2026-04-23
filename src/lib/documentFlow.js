@@ -1,15 +1,23 @@
-const STORAGE_KEY = 'document-flow-state-v1'
+import { getUser } from '@/plugins/authentication'
+
+const STORAGE_KEY = 'document-flow-state-v2'
 
 export const FLOW_STEP_TITLES = [
   'នាយកដ្ឋានរដ្ឋបាល',
   'ប្រធាននាយកដ្ឋាន',
   'នាយកខុទ្ទកាល័យ',
   'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
-  'អង្គភាពជំនាញ'
+  'អង្គភាពជំនាញ',
+  'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+  'នាយកខុទ្ទកាល័យ'
 ]
 
-export const FLOW_APPROVAL_STEP_ID = 3
+export const FLOW_APPROVAL_STEP_ID = 7
 export const FLOW_BRANCH_STEP_ID = 4
+const FLOW_SPECIALIST_STEP_ID = 5
+const FLOW_RETURN_REVIEW_STEP_ID = 6
+
+const WORKFLOW_CHAIN_STEP_IDS = FLOW_STEP_TITLES.map((_, index) => index + 1)
 
 const FLOW_STEP_MATCHERS = {
   1: [
@@ -69,6 +77,36 @@ const FLOW_STEP_MATCHERS = {
     'specialist.unit',
     'specialized_unit',
     'specialized.unit'
+  ],
+  6: [
+    'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+    'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្រ្តីប្រចាំការ',
+    'office dpm',
+    'office of dpm',
+    'office of deputy prime minister',
+    'deputy prime minister office',
+    'deputy prime minister office in charge',
+    'office_dpm',
+    'office.dpm',
+    'dpm office',
+    'ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+    'ឧបនាយករដ្ឋមន្រ្តីប្រចាំការ'
+  ],
+  7: [
+    'នាយកខុទ្ទកាល័យ',
+    'ខុទ្ទកាល័យ',
+    'cabinet director',
+    'director of cabinet',
+    'cabinet chief',
+    'chief of cabinet',
+    'cabinet office',
+    'cabinet',
+    'cabinet_director',
+    'cabinet.director',
+    'director_cabinet',
+    'director.cabinet',
+    'chief_cabinet',
+    'chief.cabinet'
   ]
 }
 
@@ -84,12 +122,29 @@ const normalizeSearchText = (value) => normalizeText(value)
 
 const cloneDeep = (value) => JSON.parse(JSON.stringify(value))
 
+const getStorageScope = () => {
+  const user = getUser() || {}
+  const identity = [
+    user.id,
+    user.user_id,
+    user.email,
+    user.username
+  ].map((value) => normalizeSearchText(value)).find(Boolean)
+
+  return identity || 'anonymous'
+}
+
 const createCommentSignature = (comment = {}) => [
   normalizeText(comment.type),
   normalizeText(comment.message),
   normalizeText(comment.actorName),
   normalizeText(comment.createdAt)
 ].join('|')
+
+const getCommentTimestamp = (comment = {}) => {
+  const timestamp = new Date(comment?.createdAt || 0).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
 
 const mergeStepComments = (baseComments = [], storedComments = []) => {
   const seen = new Set(baseComments.map((comment) => createCommentSignature(comment)))
@@ -106,6 +161,12 @@ const mergeStepComments = (baseComments = [], storedComments = []) => {
   })
 
   return merged
+    .map((comment, index) => ({ comment, index }))
+    .sort((left, right) => {
+      const timestampDiff = getCommentTimestamp(left.comment) - getCommentTimestamp(right.comment)
+      return timestampDiff !== 0 ? timestampDiff : left.index - right.index
+    })
+    .map(({ comment }) => comment)
 }
 
 const mergeStoredCommentsIntoFlowState = (baseFlowState, storedFlowState) => {
@@ -126,6 +187,11 @@ const mergeStoredCommentsIntoFlowState = (baseFlowState, storedFlowState) => {
 const getFlowUpdatedAtTimestamp = (flowState = {}) => {
   const timestamp = new Date(flowState?.updatedAt || 0).getTime()
   return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const getFlowCommentCount = (flowState = {}) => {
+  const steps = Array.isArray(flowState?.steps) ? flowState.steps : []
+  return steps.reduce((total, step) => total + (Array.isArray(step?.comments) ? step.comments.length : 0), 0)
 }
 
 const shouldPreferStoredFlowState = (storedFlowState, backendFlowState) => {
@@ -164,6 +230,10 @@ export const getFlowProgressSignature = (flowState = {}) => {
 }
 
 const mergeStoredProgressIntoFlowState = (baseFlowState, storedFlowState) => {
+  if ((storedFlowState?.steps?.length || 0) !== (baseFlowState?.steps?.length || 0)) {
+    return mergeStoredCommentsIntoFlowState(baseFlowState, storedFlowState)
+  }
+
   const nextState = cloneDeep(baseFlowState)
 
   nextState.steps = nextState.steps.map((step, index) => {
@@ -216,7 +286,7 @@ const readStore = () => {
   }
 
   try {
-    const rawValue = window.localStorage.getItem(STORAGE_KEY)
+    const rawValue = window.localStorage.getItem(`${STORAGE_KEY}:${getStorageScope()}`)
     const parsed = rawValue ? JSON.parse(rawValue) : {}
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
@@ -229,7 +299,7 @@ const writeStore = (nextValue) => {
     return
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextValue))
+  window.localStorage.setItem(`${STORAGE_KEY}:${getStorageScope()}`, JSON.stringify(nextValue))
 }
 
 const extractDisplayName = (source) => {
@@ -249,6 +319,38 @@ const extractDisplayName = (source) => {
   return parts.join(' ').trim()
 }
 
+const hasSameDisplayIdentity = (left = '', right = '') => {
+  return normalizeSearchText(left) !== '' && normalizeSearchText(left) === normalizeSearchText(right)
+}
+
+const attachCommentsToWorkflowSteps = ({
+  steps = [],
+  comments = [],
+  senderName = '',
+  senderStepId = 0,
+  receiverName = '',
+  receiverStepId = 0,
+  fallbackStepId = 0
+} = {}) => {
+  comments.forEach((comment) => {
+    const actorName = normalizeText(comment?.actorName)
+
+    let targetStepId = fallbackStepId
+    if (actorName && hasSameDisplayIdentity(actorName, senderName) && senderStepId > 0) {
+      targetStepId = senderStepId
+    } else if (actorName && hasSameDisplayIdentity(actorName, receiverName) && receiverStepId > 0) {
+      targetStepId = receiverStepId
+    }
+
+    const targetStep = steps[targetStepId - 1]
+    if (!targetStep) {
+      return
+    }
+
+    targetStep.comments = mergeStepComments(targetStep.comments, [comment])
+  })
+}
+
 const toIsoString = (value) => {
   const dateValue = value ? new Date(value) : new Date()
   return Number.isNaN(dateValue.getTime()) ? new Date().toISOString() : dateValue.toISOString()
@@ -261,6 +363,69 @@ const createCommentEntry = ({ type = 'comment', message = '', actorName = '', cr
   actorName: normalizeText(actorName),
   createdAt: toIsoString(createdAt)
 })
+
+const statusToHistoryActionType = (status) => {
+  const normalizedStatus = String(status || '').trim().toLowerCase()
+
+  if (!normalizedStatus || ['draft', 'progress'].includes(normalizedStatus)) {
+    return 'created'
+  }
+
+  if (['pending', 'sent'].includes(normalizedStatus)) {
+    return 'sent'
+  }
+
+  if (['approved', 'finished', 'finish', 'done', 'completed'].includes(normalizedStatus)) {
+    return 'approve'
+  }
+
+  if (['rejected', 'reject', 'cancelled'].includes(normalizedStatus)) {
+    return 'reject'
+  }
+
+  return 'comment'
+}
+
+const getHistoryEntryTimestamp = (value) => {
+  const parsed = value ? new Date(value).getTime() : 0
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const getLatestHistoryActionType = (record = {}, flowState = null) => {
+  const transactionEntries = []
+  const transactions = Array.isArray(record?.transactions) && record.transactions.length > 0
+    ? record.transactions
+    : [record]
+
+  transactions.forEach((transaction) => {
+    if (!transaction) {
+      return
+    }
+
+    transactionEntries.push({
+      actionType: statusToHistoryActionType(transaction?.status),
+      timestamp: getHistoryEntryTimestamp(
+        transaction?.sent_at || transaction?.updated_at || transaction?.created_at || transaction?.date_in
+      )
+    })
+  })
+
+  const briefingEntries = Array.isArray(record?.document?.briefings)
+    ? record.document.briefings.map((briefing) => ({
+      actionType: 'comment',
+      timestamp: getHistoryEntryTimestamp(briefing?.created_at || briefing?.updated_at)
+    }))
+    : []
+
+  const latestEntry = [...transactionEntries, ...briefingEntries]
+    .sort((left, right) => right.timestamp - left.timestamp)[0]
+
+  if (latestEntry?.actionType) {
+    return latestEntry.actionType
+  }
+
+  return statusToHistoryActionType(flowState?.overallStatus || record?.status)
+}
 
 const normalizeReceiverStatus = (value) => {
   const status = normalizeText(value).toLowerCase()
@@ -325,7 +490,104 @@ const buildStepRecord = (index, title) => ({
   comments: []
 })
 
-const applyDocumentBriefingsToSteps = (transaction = {}, steps = []) => {
+const getStepTimestamp = (step = {}) => {
+  const timestamp = new Date(step?.actedAt || 0).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const getTransactionTimestamp = (transaction = {}) => {
+  const timestamp = new Date(
+    transaction?.sent_at
+    || transaction?.created_at
+    || transaction?.updated_at
+    || transaction?.date_in
+    || 0
+  ).getTime()
+
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const resolveBriefingStepIndexByTransactionWindow = (briefing = {}, transactions = [], steps = []) => {
+  const briefingTimestamp = new Date(briefing?.created_at || briefing?.updated_at || 0).getTime()
+  const normalizedBriefingTimestamp = Number.isNaN(briefingTimestamp) ? 0 : briefingTimestamp
+
+  if (!normalizedBriefingTimestamp || !Array.isArray(transactions) || !transactions.length) {
+    return -1
+  }
+
+  for (let index = 0; index < transactions.length; index += 1) {
+    const transaction = transactions[index]
+    const currentTimestamp = getTransactionTimestamp(transaction)
+    const nextTimestamp = getTransactionTimestamp(transactions[index + 1])
+    const stepId = resolveWorkflowChainStepId(index + 1)
+    const stepIndex = steps.findIndex((step) => step.id === stepId)
+
+    if (stepIndex < 0 || currentTimestamp <= 0) {
+      continue
+    }
+
+    const isInWindow = normalizedBriefingTimestamp >= currentTimestamp
+      && (nextTimestamp <= 0 || normalizedBriefingTimestamp < nextTimestamp)
+
+    if (isInWindow) {
+      return stepIndex
+    }
+  }
+
+  return -1
+}
+
+const resolveBriefingStepIndex = (briefing = {}, briefer = {}, steps = [], transactions = []) => {
+  const transactionWindowIndex = resolveBriefingStepIndexByTransactionWindow(briefing, transactions, steps)
+  if (transactionWindowIndex >= 0) {
+    return transactionWindowIndex
+  }
+
+  const matchedStepIds = getAllowedFlowStepIds(briefer, { isAdmin: false })
+  const brieferName = extractDisplayName(briefer)
+  const briefingTimestamp = new Date(briefing?.created_at || briefing?.updated_at || 0).getTime()
+  const normalizedBriefingTimestamp = Number.isNaN(briefingTimestamp) ? 0 : briefingTimestamp
+
+  const candidateIndexes = matchedStepIds
+    .map((stepId) => steps.findIndex((step) => step.id === stepId))
+    .filter((index) => index >= 0)
+
+  if (!candidateIndexes.length) {
+    const currentStepIndex = steps.findIndex((step) => step.status === 'current')
+    return currentStepIndex >= 0 ? currentStepIndex : 0
+  }
+
+  const matchingCurrentIndex = candidateIndexes.find((index) => {
+    const step = steps[index]
+    return step?.status === 'current' && hasSameDisplayIdentity(step?.assigneeName, brieferName)
+  })
+
+  if (matchingCurrentIndex != null) {
+    return matchingCurrentIndex
+  }
+
+  const matchingActorIndex = candidateIndexes.find((index) => {
+    const step = steps[index]
+    return hasSameDisplayIdentity(step?.actedBy, brieferName) || hasSameDisplayIdentity(step?.assigneeName, brieferName)
+  })
+
+  if (matchingActorIndex != null && normalizedBriefingTimestamp <= 0) {
+    return matchingActorIndex
+  }
+
+  const timedCandidate = candidateIndexes
+    .map((index) => ({ index, timestamp: getStepTimestamp(steps[index]) }))
+    .filter((candidate) => candidate.timestamp > 0 && candidate.timestamp <= normalizedBriefingTimestamp)
+    .sort((left, right) => right.timestamp - left.timestamp)[0]
+
+  if (timedCandidate) {
+    return timedCandidate.index
+  }
+
+  return candidateIndexes[candidateIndexes.length - 1]
+}
+
+const applyDocumentBriefingsToSteps = (transaction = {}, steps = [], transactions = []) => {
   const briefings = Array.isArray(transaction?.document?.briefings) ? transaction.document.briefings : []
 
   briefings.forEach((briefing) => {
@@ -335,13 +597,7 @@ const applyDocumentBriefingsToSteps = (transaction = {}, steps = []) => {
     }
 
     const briefer = briefing?.briefer || briefing?.user || {}
-    const preferredStepId = getPreferredWorkflowStepId(briefer)
-    const currentStepIndex = steps.findIndex((step) => step.status === 'current')
-    const targetIndex = preferredStepId > 0
-      ? preferredStepId - 1
-      : currentStepIndex >= 0
-        ? currentStepIndex
-        : 0
+  const targetIndex = resolveBriefingStepIndex(briefing, briefer, steps, transactions)
     const targetStep = steps[targetIndex]
 
     if (!targetStep) {
@@ -361,7 +617,47 @@ const applyDocumentBriefingsToSteps = (transaction = {}, steps = []) => {
 
 const getPreferredWorkflowStepId = (source = {}) => {
   const matchedStepIds = getAllowedFlowStepIds(source)
-  return matchedStepIds.length ? Math.max(...matchedStepIds) : 0
+  if (!matchedStepIds.length) {
+    return 0
+  }
+
+  const roleTexts = [
+    source?.role_name,
+    source?.sub_role,
+    source?.position?.name,
+    source?.current_position,
+    ...collectNestedTexts(source?.position),
+    ...collectNestedTexts(source?.roles),
+    ...collectNestedTexts(source?.organization_structure_position)
+  ]
+    .map((value) => normalizeSearchText(value))
+    .filter(Boolean)
+
+  const isCabinetDirector = roleTexts.some((text) => (
+    text.includes('នាយកខុទ្ទកាល័យ')
+    || text.includes('cabinet director')
+    || text.includes('director of cabinet')
+    || text.includes('cabinet chief')
+    || text.includes('chief of cabinet')
+    || text.includes('director cabinet')
+    || text.includes('cabinet.director')
+    || text.includes('cabinet_director')
+  ))
+
+  if (isCabinetDirector && matchedStepIds.includes(3)) {
+    return 3
+  }
+
+  return Math.min(...matchedStepIds)
+}
+
+const resolveWorkflowChainStepId = (index = 0) => {
+  const normalizedIndex = Number.parseInt(index, 10)
+  if (Number.isNaN(normalizedIndex) || normalizedIndex < 0) {
+    return 0
+  }
+
+  return WORKFLOW_CHAIN_STEP_IDS[Math.min(normalizedIndex, WORKFLOW_CHAIN_STEP_IDS.length - 1)] || 0
 }
 
 const applyWorkflowIdentityProgress = ({ transaction = {}, transactionStatus = '', steps = [], senderName = '', createdAt = '' } = {}) => {
@@ -404,7 +700,15 @@ const applyWorkflowIdentityProgress = ({ transaction = {}, transactionStatus = '
     const status = normalizeReceiverStatus(receiver?.status || receiver?.action || receiver?.state)
 
     step.assigneeName = receiverName
-    step.comments = comments
+    attachCommentsToWorkflowSteps({
+      steps,
+      comments,
+      senderName,
+      senderStepId,
+      receiverName,
+      receiverStepId,
+      fallbackStepId: receiverStepId
+    })
     step.actedAt = receiver?.updated_at || receiver?.acted_at || receiver?.created_at || ''
 
     if (status === 'completed' || status === 'returned') {
@@ -484,13 +788,17 @@ const resolveForwardTargetStepId = (flowState = {}, action = 'send') => {
     case 1:
       return 2
     case 2:
-      return FLOW_APPROVAL_STEP_ID
-    case FLOW_APPROVAL_STEP_ID:
+      return 3
+    case 3:
       return FLOW_BRANCH_STEP_ID
     case FLOW_BRANCH_STEP_ID:
-      return resolveOfficeDpmSourceStepId(flowState) === 5 ? FLOW_APPROVAL_STEP_ID : 5
-    case 5:
-      return FLOW_BRANCH_STEP_ID
+      return FLOW_SPECIALIST_STEP_ID
+    case FLOW_SPECIALIST_STEP_ID:
+      return FLOW_RETURN_REVIEW_STEP_ID
+    case FLOW_RETURN_REVIEW_STEP_ID:
+      return FLOW_APPROVAL_STEP_ID
+    case FLOW_APPROVAL_STEP_ID:
+      return FLOW_RETURN_REVIEW_STEP_ID
     default:
       return 0
   }
@@ -573,7 +881,7 @@ const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] }
     const transactionStatus = normalizeText(entry?.status).toLowerCase()
     const sender = entry?.sender || {}
     const senderName = extractDisplayName(sender)
-    const senderStepId = getPreferredWorkflowStepId(sender)
+    const senderStepId = resolveWorkflowChainStepId(index) || getPreferredWorkflowStepId(sender)
     const receivers = Array.isArray(entry?.receivers) ? entry.receivers : []
     const actedAt = entry?.sent_at || entry?.updated_at || entry?.created_at || entry?.date_in || ''
 
@@ -599,7 +907,7 @@ const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] }
 
     receivers.forEach((receiver) => {
       const receiverSource = receiver?.user || receiver || {}
-      const receiverStepId = getPreferredWorkflowStepId(receiverSource)
+      const receiverStepId = resolveWorkflowChainStepId(index + 1) || getPreferredWorkflowStepId(receiverSource)
       if (receiverStepId <= 0) {
         return
       }
@@ -616,7 +924,15 @@ const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] }
       const receiverComments = extractComments(receiver)
 
       receiverStep.assigneeName = receiverName || receiverStep.assigneeName
-      receiverStep.comments = mergeStepComments(receiverStep.comments, receiverComments)
+      attachCommentsToWorkflowSteps({
+        steps,
+        comments: receiverComments,
+        senderName,
+        senderStepId,
+        receiverName,
+        receiverStepId,
+        fallbackStepId: receiverStepId
+      })
 
       if (isLatestTransaction && transactionStatus === 'pending' && !receiver?.accepted_at) {
         receiverStep.status = 'current'
@@ -686,7 +1002,11 @@ export const buildDocumentFlowState = (transaction = {}) => {
     })
   }
 
-  applyDocumentBriefingsToSteps(latestTransaction?.document?.briefings ? latestTransaction : transaction, steps)
+  applyDocumentBriefingsToSteps(
+    latestTransaction?.document?.briefings ? latestTransaction : transaction,
+    steps,
+    transactionChain
+  )
 
   reconcileOrderedStepStatuses(steps)
 
@@ -708,9 +1028,16 @@ export const getStoredDocumentFlowState = (documentId, transaction = null) => {
   if (transaction && typeof transaction === 'object') {
     const backendState = buildDocumentFlowState(transaction)
     if (storedValue && typeof storedValue === 'object') {
-      return shouldPreferStoredFlowState(storedValue, backendState)
-        ? mergeStoredProgressIntoFlowState(backendState, storedValue)
-        : mergeStoredCommentsIntoFlowState(backendState, storedValue)
+      const preferStoredState = shouldPreferStoredFlowState(storedValue, backendState)
+      if (preferStoredState) {
+        return mergeStoredProgressIntoFlowState(backendState, storedValue)
+      }
+
+      if (getFlowCommentCount(backendState) === 0 && getFlowCommentCount(storedValue) > 0) {
+        return mergeStoredCommentsIntoFlowState(backendState, storedValue)
+      }
+
+      return mergeStoredCommentsIntoFlowState(backendState, storedValue)
     }
 
     return backendState
@@ -882,10 +1209,12 @@ export const applyDocumentFlowListOverride = (documentRecord) => {
   }
 
   const normalizedState = finalizeFlowState(flowState, flowState.overallStatus)
+  const normalizedRecordStatus = normalizeText(sourceTransaction?.status || documentRecord?.status).toLowerCase()
   return {
     ...documentRecord,
     flowState: normalizedState,
-    status: normalizedState.overallStatus || documentRecord.status,
+    status: normalizedRecordStatus || normalizedState.overallStatus || documentRecord.status,
+    displayStatusAction: getLatestHistoryActionType(sourceTransaction || documentRecord, normalizedState),
     sentTo: normalizedState.currentRecipient || documentRecord.sentTo
   }
 }

@@ -36,18 +36,34 @@ const deleteDoc = (doc) => {
 }
 
 /* ================= STATUS ================= */
+const resolveDisplayStatusAction = (doc = {}) => {
+  if (doc?.displayStatusAction) {
+    return doc.displayStatusAction
+  }
+
+  const status = String(doc?.status || '').trim().toLowerCase()
+
+  if (!status || ['draft', 'progress'].includes(status)) return 'created'
+  if (['pending', 'sent'].includes(status)) return 'sent'
+  if (['approved', 'finished', 'finish', 'done', 'completed'].includes(status)) return 'approve'
+  if (['rejected', 'reject', 'cancelled'].includes(status)) return 'reject'
+  return 'comment'
+}
+
 const statusText = (s) => ({
-  pending: 'មិនទាន់អនុម័ត',
-  approved: 'អនុម័តរួច',
-  rejected: 'មិនយល់ព្រម',
-  draft: 'ឯកសារព្រាង'
+  sent: 'បានបញ្ជូន',
+  approve: 'បានអនុម័ត',
+  reject: 'មិនយល់ព្រម',
+  created: 'បានបង្កើត',
+  comment: 'មតិយោបល់'
 }[s])
 
 const statusClass = (s) => ({
-  pending: 'acpending',
-  approved: 'acapr',
-  rejected: 'acdecl',
-  draft: 'acdraft'
+  sent: 'status-sent',
+  approve: 'status-approve',
+  reject: 'status-reject',
+  created: 'status-created',
+  comment: 'status-comment'
 }[s])
 </script>
 
@@ -71,9 +87,9 @@ const statusClass = (s) => ({
           <!-- STATUS -->
           <span
             class="ocm_status ocm_statusgd"
-            :class="statusClass(doc.status)"
+            :class="statusClass(resolveDisplayStatusAction(doc))"
           >
-            {{ statusText(doc.status) }}
+            {{ statusText(resolveDisplayStatusAction(doc)) }}
           </span>
 
           <!-- MENU -->

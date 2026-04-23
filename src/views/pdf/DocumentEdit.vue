@@ -1,5 +1,5 @@
 <template>
-  <Header title="លំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
+  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
   <section class="appppw">
   <Aside />
   <div class="sw">

@@ -148,32 +148,50 @@ const deleteRow = () => {
 }
 
 /* ===================== STATUS MAP ===================== */
+const resolveDisplayStatusAction = (doc = {}) => {
+  if (doc?.displayStatusAction) {
+    return doc.displayStatusAction
+  }
+
+  const status = String(doc?.status || '').trim().toLowerCase()
+
+  if (!status || ['draft', 'progress'].includes(status)) return 'created'
+  if (['pending', 'sent'].includes(status)) return 'sent'
+  if (['approved', 'finished', 'finish', 'done', 'completed'].includes(status)) return 'approve'
+  if (['rejected', 'reject', 'cancelled'].includes(status)) return 'reject'
+  return 'comment'
+}
+
 const statusMap = {
-  pending: {
-    text: 'មិនទាន់អនុម័ត',
-    class: 'acpending'
+  sent: {
+    text: 'បានបញ្ជូន',
+    class: 'status-sent'
   },
-  approved: {
-    text: 'អនុម័តរួច',
-    class: 'acapr'
+  approve: {
+    text: 'បានអនុម័ត',
+    class: 'status-approve'
   },
-  rejected: {
+  reject: {
     text: 'មិនយល់ព្រម',
-    class: 'acdecl'
+    class: 'status-reject'
   },
-  draft: {
-    text: 'ឯកសារព្រាង',
-    class: 'acdraft'
+  created: {
+    text: 'បានបង្កើត',
+    class: 'status-created'
+  },
+  comment: {
+    text: 'មតិយោបល់',
+    class: 'status-comment'
   }
 }
 
 /* ===================== STATUS COMPUTED ===================== */
 const statusText = computed(() => {
-  return statusMap[props.doc.status]?.text || ''
+  return statusMap[resolveDisplayStatusAction(props.doc)]?.text || ''
 })
 
 const statusClass = computed(() => {
-  return statusMap[props.doc.status]?.class || ''
+  return statusMap[resolveDisplayStatusAction(props.doc)]?.class || ''
 })
 
 /* ===================== SENT AGO ===================== */

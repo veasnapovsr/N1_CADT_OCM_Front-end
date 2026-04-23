@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
+import { toast } from 'vue-sonner'
 
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
@@ -24,6 +25,41 @@ const store = useStore()
 const pendingList = ref([])
 const currentUser = getUser() || {}
 const userIsAdmin = isAdmin()
+
+const normalizeRoleText = (value) => String(value || '').trim().toLowerCase()
+const currentUserRoleTexts = [
+  currentUser?.username,
+  currentUser?.email,
+  currentUser?.current_position,
+  currentUser?.current_organization,
+  currentUser?.position?.name,
+  currentUser?.organization?.name,
+  currentUser?.role_name
+].map(normalizeRoleText).filter(Boolean)
+
+const isBlockedFrontTransactionUser = computed(() => {
+  return currentUserRoleTexts.some((text) => (
+    text.includes('docflow.department.head@ocm.gov.kh')
+    || text.includes('ប្រធាននាយកដ្ឋាន')
+  ))
+})
+
+const canCreateFrontTransaction = computed(() => {
+  if (isBlockedFrontTransactionUser.value) {
+    return false
+  }
+
+  if (userIsAdmin) {
+    return true
+  }
+
+  return currentUserRoleTexts.some((text) => (
+    text.includes('docflow.admin.department@ocm.gov.kh')
+    || text.includes('នាយកដ្ឋានរដ្ឋបាល')
+    || text.includes('administration department')
+    || text.includes('department of administration')
+  ))
+})
 
 // ---------------- Router ----------------
 const router = useRouter()
@@ -64,55 +100,217 @@ const pendingFiles = computed(() => {
 
 // ---------------- Form state (RIGHT CARD) ----------------
 const form = reactive({
-  title: '',
-  uid: '',
-  department: '',
-  documentType: '',
-  ministry: '',
-  signature: null
+  objective: '',
+  number: '',
+  startDate: new Date(),
+  documentType: null
 })
 
-const startDate = ref(null)
 const previewImages = ref([])
-const selectedFiles = ref([])
+const files = ref([])
 const fileInput = ref(null)
 const isSubmitting = ref(false)
+const isUploading = ref(false)
 
 // ---------------- File upload handlers ----------------
 const selectFiles = () => {
-  fileInput.value.click()
+  fileInput.value?.click()
 }
 
 const handleFileUpload = (event) => {
-  const files = event.target.files
-  processFiles(files)
+  const input = event.target
+  addFiles(input.files || [])
+  input.value = ''
 }
 
 const handleDrop = (event) => {
   event.preventDefault()
-  const files = event.dataTransfer.files
-  processFiles(files)
+  addFiles(event.dataTransfer?.files || [])
 }
 
-const processFiles = (files) => {
-  for (const file of files) {
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        previewImages.value.push(e.target.result)
-      }
-      reader.readAsDataURL(file)
-      selectedFiles.value.push(file)
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+
+const isPdf = (file) => file?.type === 'application/pdf'
+
+const isWord = (file) => file && (
+  file.type === 'application/msword'
+  || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+)
+
+const addFiles = (newFiles) => {
+  if (!newFiles || !newFiles.length) {
+    return
+  }
+
+  const incomingFiles = Array.from(newFiles)
+  const currentFiles = [...files.value]
+  let hasPdf = currentFiles.some(isPdf)
+  let hasWord = currentFiles.some(isWord)
+
+  for (const file of incomingFiles) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('អនុញ្ញាតតែឯកសារ PDF និង Word ប៉ុណ្ណោះ')
+      return
     }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('ឯកសារមិនអាចលើស 25MB បានទេ')
+      return
+    }
+
+    if (isPdf(file)) {
+      if (hasPdf) {
+        currentFiles.splice(currentFiles.findIndex(isPdf), 1)
+      }
+      currentFiles.push(file)
+      hasPdf = true
+      continue
+    }
+
+    if (isWord(file)) {
+      if (hasWord) {
+        currentFiles.splice(currentFiles.findIndex(isWord), 1)
+      }
+      currentFiles.push(file)
+      hasWord = true
+    }
+  }
+
+  files.value = currentFiles
+}
+
+const removeFile = (index) => {
+  files.value = files.value.filter((_, fileIndex) => fileIndex !== index)
+}
+
+const uploadFiles = async (record) => {
+  if (isUploading.value || !record?.document_id) {
+    return
+  }
+
+  const pdfFile = files.value.find(isPdf)
+  const wordFile = files.value.find(isWord)
+
+  if (!pdfFile && !wordFile) {
+    return
+  }
+
+  isUploading.value = true
+
+  try {
+    toast.info('កំពុងភ្ជាប់ឯកសារយោង...')
+
+    const handleUploadError = (error) => {
+      const message = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'មានបញ្ហាភ្ជាប់ឯកសារយោង'
+      const isFlysystemError = message.includes('Flysystem')
+        || message.includes('Filesystem::has()')
+        || message.includes('must be of type string, null given')
+
+      return { message, isFlysystemError }
+    }
+
+    let pdfOk = false
+    let wordOk = false
+
+    if (pdfFile) {
+      try {
+        const pdfFormData = new FormData()
+        pdfFormData.append('pdf_file', pdfFile)
+        pdfFormData.append('document_id', String(record.document_id))
+        await store.dispatch('transaction/uploadPdf', pdfFormData)
+        pdfOk = true
+      } catch (error) {
+        const { message, isFlysystemError } = handleUploadError(error)
+        if (isFlysystemError) {
+          pdfOk = true
+        } else {
+          toast.error(message)
+        }
+      }
+    }
+
+    if (wordFile) {
+      try {
+        const wordFormData = new FormData()
+        wordFormData.append('word_file', wordFile)
+        wordFormData.append('document_id', String(record.document_id))
+        await store.dispatch('transaction/uploadWord', wordFormData)
+        wordOk = true
+      } catch (error) {
+        const { message, isFlysystemError } = handleUploadError(error)
+        if (isFlysystemError) {
+          wordOk = true
+        } else {
+          toast.error(message)
+        }
+      }
+    }
+
+    if (pdfOk || wordOk) {
+      toast.success('បានភ្ជាប់ឯកសារយោងរួចរាល់')
+      files.value = []
+      previewImages.value = []
+    }
+  } finally {
+    isUploading.value = false
   }
 }
 
-// Fake submit (you can plug your API later)
 const submitForm = async () => {
+  if (isSubmitting.value) {
+    return
+  }
+
+  if (!canCreateFrontTransaction.value) {
+    toast.error('អ្នកមិនមានសិទ្ធិបង្កើតប្រតិបត្តិការឯកសារនៅផ្ទាំងនេះទេ')
+    return
+  }
+
+  if (!String(form.objective || '').trim() || !String(form.number || '').trim() || !form.startDate || !form.documentType) {
+    toast.error('សូមបំពេញព័ត៌មានដែលបានគូសពណ៌ក្រហម')
+    return
+  }
+
   isSubmitting.value = true
-  console.log('Submitting form:', form)
-  console.log('Files:', selectedFiles.value)
-  isSubmitting.value = false
+
+  try {
+    const res = await store.dispatch('transaction/create', {
+      objective: String(form.objective || '').trim(),
+      number: String(form.number || '').trim(),
+      date_in: form.startDate,
+      document_type: form.documentType?.value ?? form.documentType
+    })
+
+    if (!res?.data?.ok) {
+      throw new Error(res?.data?.message || 'មិនអាចបង្កើតប្រតិបត្តិការឯកសារបានទេ')
+    }
+
+    toast.success('រក្សារទុកព័ត៌មានប្រតិបត្តិការឯកសាររួចរាល់')
+
+    await uploadFiles(res.data.record)
+
+    form.objective = ''
+    form.number = ''
+    form.startDate = new Date()
+    form.documentType = null
+    previewImages.value = []
+    files.value = []
+
+    await Promise.all([fetchStats(), fetchPendingList()])
+
+    if (res?.data?.record?.id) {
+      router.push({ name: 'pdf-documents-detail', params: { id: res.data.record.id } })
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error(error?.response?.data?.message || error?.message || 'មិនអាចបង្កើតប្រតិបត្តិការឯកសារបានទេ')
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 // ---------------- Select options ----------------
@@ -124,8 +322,8 @@ const departments = [
 ]
 
 const documentTypes = [
-{ value: "1", label: "របាយការណ៍" },
-        { value: "2", label: "សំណើរ" },
+  { value: '1', label: 'របាយការណ៍' },
+  { value: '2', label: 'សំណើរ' },
 ]
 
 
@@ -207,7 +405,7 @@ onMounted(() => {
 
 
 <template>
-  <Header title="លំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
+  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
   <section class="appppw">
   <Aside />
   <div class="sw">
@@ -256,10 +454,10 @@ onMounted(() => {
 </div>
   </div>
 
-  <div class="ocm_card ocm_doc_fr">
+  <div v-if="canCreateFrontTransaction" class="ocm_card ocm_doc_fr">
   <div class="ocm_card_body">
 
-    <h2 class="h card_tt t-lspace mb-10">បង្កើតឯកសារ</h2>
+    <h2 class="h card_tt t-lspace mb-10">បង្កើតប្រតិបត្តិការ</h2>
 
     <form @submit.prevent="submitForm">
 
@@ -271,10 +469,10 @@ onMounted(() => {
           </div>
           <div class="ocmopt-meta-content ocm_meta_check">
             <textarea
-              v-model="form.title"
+              v-model="form.objective"
               class="form-control"
               cols="60"
-              rows="3"
+              rows="5"
             ></textarea>
           </div>
         </div>
@@ -289,7 +487,7 @@ onMounted(() => {
           </div>
           <div class="ocmopt-meta-content">
             <input
-              v-model="form.uid"
+              v-model="form.number"
               type="text"
               class="form-control"
             />
@@ -302,7 +500,7 @@ onMounted(() => {
           </div>
           <div class="ocmopt-meta-content">
             <FlatPickr
-              v-model="startDate"
+              v-model="form.startDate"
               placeholder="កាលបរិច្ឆេទ"
               :config="{
                 dateFormat: 'd-m-Y',
@@ -339,20 +537,22 @@ onMounted(() => {
         @drop="handleDrop"
         @click="selectFiles"
       >
-        <p>អូសនិងទម្លាក់ឯកសារនៅទីនេះ ឬចុចទីនេះ</p>
+        <svg stroke="currentColor" fill="none" viewBox="0 0 48 48" class="w-12 h-12 mx-auto text-gray-400"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <p class="drop-zone-hint">អូសនិងទម្លាក់ ឬចុចទីនេះ — អាចភ្ជាប់ទាំង PDF និង Word (១ PDF + ១ Word)</p>
         <input
           type="file"
           multiple
           ref="fileInput"
+          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           @change="handleFileUpload"
           hidden
         />
-      </div>
 
-      <!-- Image previews -->
-      <div class="img_preview mb-15">
-        <div v-for="(image, index) in previewImages" :key="index">
-          <img :src="image" />
+        <div class="list-files-upload w-full p-4">
+          <div v-for="(file, index) in files" :key="index" class="selectedFiles w-full m-2 flex items-center gap-2 flex-wrap">
+            <span>{{ index + 1 }}. {{ file.name }} , ទំហំ៖ {{ (file.size / 1024 / 1024).toFixed(2) }} មេកាបៃ (MB)</span>
+            <button type="button" class="file-remove-btn" :title="'យកចេញ ' + file.name" @click.stop="removeFile(index)">×</button>
+          </div>
         </div>
       </div>
 
@@ -361,7 +561,7 @@ onMounted(() => {
         <button
           class="button ocm_btn_ac button-primary"
           type="submit"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || isUploading"
         >
         <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 32 448 448"><path d="M433.941 129.941l-83.882-83.882A48 48 0 0 0 316.118 32H48C21.49 32 0 53.49 0 80v352c0 26.51 21.49 48 48 48h352c26.51 0 48-21.49 48-48V163.882a48 48 0 0 0-14.059-33.941zM272 80v80H144V80h128zm122 352H54a6 6 0 0 1-6-6V86a6 6 0 0 1 6-6h42v104c0 13.255 10.745 24 24 24h176c13.255 0 24-10.745 24-24V83.882l78.243 78.243a6 6 0 0 1 1.757 4.243V426a6 6 0 0 1-6 6zM224 232c-48.523 0-88 39.477-88 88s39.477 88 88 88s88-39.477 88-88s-39.477-88-88-88zm0 128c-22.056 0-40-17.944-40-40s17.944-40 40-40s40 17.944 40 40s-17.944 40-40 40z" fill="currentColor"></path></svg>
         រក្សារទុក
@@ -386,3 +586,58 @@ onMounted(() => {
 		</div>  
 </section>
 </template>
+  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
+<style scoped>
+.drop-zone {
+  width: 100%;
+  padding: 20px;
+  background: #e5e5e566;
+  border: 2px dashed var(--ocm-input-border);
+  text-align: center;
+  cursor: pointer;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  font-size: 15px;
+}
+
+.drop-zone:hover {
+  background: #e5e5e566;
+}
+
+.drop-zone svg {
+  width: 50px;
+}
+
+.drop-zone-hint {
+  margin: 0;
+  font-size: 14px;
+}
+
+.list-files-upload .selectedFiles {
+  min-height: 2rem;
+}
+
+.file-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.file-remove-btn:hover {
+  background: #fca5a5;
+  color: #b91c1c;
+}
+</style>

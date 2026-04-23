@@ -1,5 +1,5 @@
 <template>
-  <Header title="លំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
+  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
   <section class="appppw">
   <Aside />
   <div class="sw">
@@ -225,25 +225,38 @@ const actionTypeOptions = [
   { label: 'បង្កើតឯកសារ', value: 'created' }
 ]
 
-/** Backend status → timeline actionType */
+const getWorkflowUserName = (user = {}) => {
+  return [user.countesy_name || user.Countesy || '', user.fullname || ''].filter(Boolean).join(' ') || user.email || 'មិនបានបញ្ជាក់'
+}
+
+const getWorkflowUserSubtitle = (user = {}) => {
+  return [user.current_position || user.position?.name || '', user.current_organization || user.organization?.name || '']
+    .filter(Boolean)
+    .join(' • ')
+}
+
 const statusToActionType = (status) => {
-  if (!status || status === 'draft') return 'created'
-  if (status === 'sent') return 'sent'
-  if (status === 'approved') return 'approve'
-  if (status === 'rejected') return 'reject'
+  const normalizedStatus = String(status || '').trim().toLowerCase()
+  if (!normalizedStatus || ['draft', 'progress'].includes(normalizedStatus)) return 'created'
+  if (['pending', 'sent'].includes(normalizedStatus)) return 'sent'
+  if (['approved', 'finished', 'finish', 'done', 'completed'].includes(normalizedStatus)) return 'approve'
+  if (['rejected', 'reject', 'cancelled'].includes(normalizedStatus)) return 'reject'
   return 'comment'
 }
 
-/** Build description text from record and actionType */
-const getDescription = (r, actionType) => {
-  const sentTo = r.receivers?.length > 0
-    ? r.receivers[0].lastname + ' ' + r.receivers[0].firstname
-    : ''
+const getReceiverNames = (receivers = []) => receivers
+  .map((receiver) => getWorkflowUserName(receiver?.user || receiver))
+  .filter(Boolean)
+
+const getTransactionDescription = (transaction, actionType) => {
+  const receiverNames = getReceiverNames(transaction?.receivers || [])
   switch (actionType) {
     case 'created':
       return 'បានបង្កើតឯកសារ'
     case 'sent':
-      return sentTo ? `បានផ្ញើឯកសារទៅ ${sentTo}` : 'បានផ្ញើឯកសារ'
+      return receiverNames.length > 0
+        ? `បានផ្ញើឯកសារទៅ ${receiverNames.join(', ')}`
+        : 'បានផ្ញើឯកសារ'
     case 'approve':
       return 'បានអនុម័តឯកសារ'
     case 'reject':
@@ -253,26 +266,49 @@ const getDescription = (r, actionType) => {
   }
 }
 
-/** Map API transaction record to timeline log */
-const mapRecordToLog = (r) => {
-  const actionType = statusToActionType(r.status)
-  const userName = r.sender ? (r.sender.lastname + ' ' + r.sender.firstname) : ''
-  const userSubtitle = r.sender?.officer?.jobs?.length > 0
-    ? r.sender.officer.jobs[0].organization_structure_position?.position?.name || ''
-    : ''
-  const timestamp = r.created_at || r.sent_at || r.date_in
+const createTransactionLog = (record, transaction) => {
+  const actionType = statusToActionType(transaction?.status)
+  const sender = transaction?.sender || record?.sender || {}
+  const timestamp = transaction?.sent_at || transaction?.updated_at || transaction?.created_at || transaction?.date_in
   return {
-    id: r.id,
+    id: `transaction-${transaction?.id}`,
     actionType,
-    documentId: r.id,
-    userName,
-    userSubtitle,
-    userAvatar: r.sender?.avatar_url || null,
-    documentDescription: r.subject || '',
-    documentReference: r.document?.number || '',
-    description: getDescription(r, actionType),
-    timestamp: timestamp ? (typeof timestamp === 'string' ? timestamp : new Date(timestamp).toISOString()) : new Date().toISOString()
+    documentId: transaction?.id || record?.id,
+    userName: getWorkflowUserName(sender),
+    userSubtitle: getWorkflowUserSubtitle(sender),
+    userAvatar: sender?.avatar_url || null,
+    documentDescription: transaction?.subject || record?.subject || '',
+    documentReference: record?.document?.number || '',
+    description: getTransactionDescription(transaction, actionType),
+    timestamp: timestamp ? String(timestamp) : new Date().toISOString()
   }
+}
+
+const createBriefingLog = (record, briefing) => {
+  const briefer = briefing?.briefer || {}
+  return {
+    id: `briefing-${briefing?.id}`,
+    actionType: 'comment',
+    documentId: record?.id,
+    userName: [briefer.lastname, briefer.firstname].filter(Boolean).join(' ') || briefer.email || 'មិនបានបញ្ជាក់',
+    userSubtitle: briefer.email || '',
+    userAvatar: null,
+    documentDescription: record?.subject || '',
+    documentReference: record?.document?.number || '',
+    description: briefing?.briefing || '',
+    timestamp: briefing?.created_at || briefing?.updated_at || new Date().toISOString()
+  }
+}
+
+const mapRecordToLogs = (record) => {
+  const transactionLogs = Array.isArray(record?.transactions) && record.transactions.length > 0
+    ? record.transactions.map((transaction) => createTransactionLog(record, transaction))
+    : [createTransactionLog(record, record)]
+  const briefingLogs = Array.isArray(record?.document?.briefings)
+    ? record.document.briefings.map((briefing) => createBriefingLog(record, briefing))
+    : []
+
+  return [...transactionLogs, ...briefingLogs]
 }
 
 const formatTimeKhmer = (value) => {
@@ -317,7 +353,17 @@ const fetchLogs = async () => {
     }
     const res = await store.dispatch('transaction/list', params)
     if (res.data && res.data.records) {
-      const mapped = res.data.records.map(mapRecordToLog)
+      const detailedRecords = await Promise.all(
+        res.data.records.map(async (record) => {
+          try {
+            const detailRes = await store.dispatch('transaction/read', { id: record.id })
+            return detailRes?.data?.record || record
+          } catch {
+            return record
+          }
+        })
+      )
+      const mapped = detailedRecords.flatMap(mapRecordToLogs)
       mapped.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       logs.value = mapped
     } else {
