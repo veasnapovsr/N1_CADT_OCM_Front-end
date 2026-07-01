@@ -37,6 +37,30 @@ const currentUserRoleTexts = [
   currentUser?.role_name
 ].map(normalizeRoleText).filter(Boolean)
 
+const FRONT_TRANSACTION_ALLOWED_ROLE_KEYWORDS = [
+  'docflow.admin.department@ocm.gov.kh',
+  'docflow.office.dpm@ocm.gov.kh',
+  'docflow.specialist.unit@ocm.gov.kh',
+  'នាយកដ្ឋានរដ្ឋបាល',
+  'administration department',
+  'department of administration',
+  'office dpm',
+  'office of dpm',
+  'docflow office dpm',
+  'office of deputy prime minister',
+  'deputy prime minister office',
+  'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+  'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្រ្តីប្រចាំការ',
+  'ឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
+  'ឧបនាយករដ្ឋមន្រ្តីប្រចាំការ',
+  'អង្គភាពជំនាញ',
+  'docflow specialist unit',
+  'specialist unit',
+  'specialized unit',
+  'technical unit',
+  'expert unit'
+]
+
 const isBlockedFrontTransactionUser = computed(() => {
   return currentUserRoleTexts.some((text) => (
     text.includes('docflow.department.head@ocm.gov.kh')
@@ -54,10 +78,7 @@ const canCreateFrontTransaction = computed(() => {
   }
 
   return currentUserRoleTexts.some((text) => (
-    text.includes('docflow.admin.department@ocm.gov.kh')
-    || text.includes('នាយកដ្ឋានរដ្ឋបាល')
-    || text.includes('administration department')
-    || text.includes('department of administration')
+    FRONT_TRANSACTION_ALLOWED_ROLE_KEYWORDS.some((keyword) => text.includes(keyword))
   ))
 })
 

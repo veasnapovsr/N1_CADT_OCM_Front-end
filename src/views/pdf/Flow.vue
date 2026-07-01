@@ -35,11 +35,23 @@ import DocumentSentToFilter from '@/components/flow/DocumentSentToFilter.vue'
 ======================= */
 import { flowStats } from '@/data/Flowstatuscheck'
 import { documents } from '@/data/documents'
-import { formatKhmerNumber } from '@/lib/utils'
-import { applyDocumentFlowListOverride, dedupeWorkflowRecords } from '@/lib/documentFlow'
+import {
+  formatKhmerNumber,
+  resolveWorkflowAvatarUrl,
+  getWorkflowAvatarFallback
+} from '@/lib/utils'
+import {
+  applyDocumentFlowListOverride,
+  dedupeWorkflowRecords,
+  canDeleteWorkflowDocument,
+  isWorkflowDocumentDeleteDisabled
+} from '@/lib/documentFlow'
+import { getUser, isAdmin } from '@/plugins/authentication'
 
 const store = useStore()
 const route = useRoute()
+const currentUser = computed(() => getUser() || {})
+const userIsAdmin = computed(() => isAdmin())
 
 
 /* =======================
@@ -99,7 +111,7 @@ const authorOptions = computed(() => {
       return {
         value: creator,
         name: creator,
-        img: record?.creatorAvatar || '/female.jpeg'
+        img: record?.creatorAvatar || getWorkflowAvatarFallback(creator)
       }
     })
   ]
@@ -250,13 +262,24 @@ const fetchDocuments = async (page = 1) => {
     const res = await store.dispatch('transaction/list', params)
 
     if (res.data && res.data.records) {
-      records.value = dedupeWorkflowRecords(res.data.records).map((r) => {
+      records.value = dedupeWorkflowRecords(res.data.records, currentUser.value).map((r) => {
         const jobs = r.sender?.officer?.jobs
         const position = jobs?.length
           ? jobs[0]?.organization_structure_position?.position?.name
           : ''
-        return applyDocumentFlowListOverride({
+        const creator = [
+          r.sender?.countesy_name,
+          r.sender?.lastname && r.sender?.firstname
+            ? `${r.sender.lastname} ${r.sender.firstname}`
+            : r.sender?.fullname || ''
+        ].filter(Boolean).join(' ')
+
+        const baseRecord = {
           id: r.id,
+          document_id: r.document?.id ?? r.document_id,
+          transaction: r,
+          raw: r,
+          sender_id: r.sender_id,
           title: r.subject,
           code: r.document?.number,
           date: r.date_in,
@@ -266,20 +289,21 @@ const fetchDocuments = async (page = 1) => {
             hour12: true
           }) : '',
           countesy: r.date_in,
-          creator: [
-            r.sender?.countesy_name,
-            r.sender?.lastname && r.sender?.firstname
-              ? `${r.sender.lastname} ${r.sender.firstname}`
-              : r.sender?.fullname || ''
-          ].filter(Boolean).join(' '),
-          creatorAvatar: r.sender?.avatar_url || '/female.jpeg',
+          creator,
+          creatorAvatar: resolveWorkflowAvatarUrl(r.sender) || getWorkflowAvatarFallback(creator),
           thumbnailUrl: r.document?.pdf_thumbnail || '',
           size: r.document?.pdf_file_size || '2MB',
           status: r.status != null && r.status !== '' ? r.status : 'draft',
           sentAt: r.sent_at,
           sentTo: !r.receivers?.length ? 'គ្មានអ្នកទទួល' : r.receivers.map((rev) => rev.user?.fullname).filter(Boolean).join(', '),
           position
-        })
+        }
+
+        try {
+          return applyDocumentFlowListOverride(baseRecord)
+        } catch (_error) {
+          return baseRecord
+        }
       })
     }
     
@@ -327,7 +351,12 @@ const showDeletePopup = ref(false)
 const docToDelete = ref(null)
 
 const onDeleteRequest = (doc) => {
-  if (doc?.status === 'approved') return
+  if (!canDeleteWorkflowDocument(currentUser.value, doc, { isAdmin: userIsAdmin.value })) {
+    return
+  }
+  if (isWorkflowDocumentDeleteDisabled(doc, currentUser.value, { isAdmin: userIsAdmin.value })) {
+    return
+  }
   docToDelete.value = doc
   showDeletePopup.value = true
 }

@@ -15,7 +15,7 @@ export const FLOW_STEP_TITLES = [
 export const FLOW_APPROVAL_STEP_ID = 7
 export const FLOW_BRANCH_STEP_ID = 4
 const FLOW_SPECIALIST_STEP_ID = 5
-const FLOW_RETURN_REVIEW_STEP_ID = 6
+export const FLOW_RETURN_REVIEW_STEP_ID = 6
 
 const WORKFLOW_CHAIN_STEP_IDS = FLOW_STEP_TITLES.map((_, index) => index + 1)
 
@@ -39,7 +39,6 @@ const FLOW_STEP_MATCHERS = {
   ],
   3: [
     'នាយកខុទ្ទកាល័យ',
-    'ខុទ្ទកាល័យ',
     'cabinet director',
     'director of cabinet',
     'cabinet chief',
@@ -76,7 +75,9 @@ const FLOW_STEP_MATCHERS = {
     'specialist_unit',
     'specialist.unit',
     'specialized_unit',
-    'specialized.unit'
+    'specialized.unit',
+    'នាយកដ្ឋានបច្ចេកវិទ្យានិងប្រតិបត្តិការឌីជីថល',
+    'digital technology and operations department'
   ],
   6: [
     'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ',
@@ -94,7 +95,6 @@ const FLOW_STEP_MATCHERS = {
   ],
   7: [
     'នាយកខុទ្ទកាល័យ',
-    'ខុទ្ទកាល័យ',
     'cabinet director',
     'director of cabinet',
     'cabinet chief',
@@ -216,6 +216,10 @@ const shouldPreferStoredFlowState = (storedFlowState, backendFlowState) => {
     return false
   }
 
+  if (storedStatus === 'rejected' && ['pending', 'draft', 'progress'].includes(backendStatus)) {
+    return false
+  }
+
   return getFlowProgressSignature(storedFlowState) > getFlowProgressSignature(backendFlowState)
 }
 
@@ -323,23 +327,54 @@ const hasSameDisplayIdentity = (left = '', right = '') => {
   return normalizeSearchText(left) !== '' && normalizeSearchText(left) === normalizeSearchText(right)
 }
 
+const resolveCommentTargetStepId = ({
+  comment = {},
+  senderName = '',
+  senderStepId = 0,
+  receiverName = '',
+  receiverStepId = 0
+} = {}) => {
+  const actorName = normalizeText(comment?.actorName)
+  if (!actorName) {
+    return 0
+  }
+
+  if (senderStepId > 0 && hasSameDisplayIdentity(actorName, senderName)) {
+    return senderStepId
+  }
+
+  if (receiverStepId > 0 && hasSameDisplayIdentity(actorName, receiverName)) {
+    return receiverStepId
+  }
+
+  const actorParts = actorName.split(/\s+/).filter(Boolean)
+  return getPreferredWorkflowStepId({
+    fullname: actorName,
+    username: comment?.actorUsername || comment?.username || '',
+    lastname: actorParts[0] || '',
+    firstname: actorParts.slice(1).join(' ') || ''
+  })
+}
+
 const attachCommentsToWorkflowSteps = ({
   steps = [],
   comments = [],
   senderName = '',
   senderStepId = 0,
   receiverName = '',
-  receiverStepId = 0,
-  fallbackStepId = 0
+  receiverStepId = 0
 } = {}) => {
   comments.forEach((comment) => {
-    const actorName = normalizeText(comment?.actorName)
+    const targetStepId = resolveCommentTargetStepId({
+      comment,
+      senderName,
+      senderStepId,
+      receiverName,
+      receiverStepId
+    })
 
-    let targetStepId = fallbackStepId
-    if (actorName && hasSameDisplayIdentity(actorName, senderName) && senderStepId > 0) {
-      targetStepId = senderStepId
-    } else if (actorName && hasSameDisplayIdentity(actorName, receiverName) && receiverStepId > 0) {
-      targetStepId = receiverStepId
+    if (targetStepId <= 0) {
+      return
     }
 
     const targetStep = steps[targetStepId - 1]
@@ -519,8 +554,9 @@ const resolveBriefingStepIndexByTransactionWindow = (briefing = {}, transactions
     const transaction = transactions[index]
     const currentTimestamp = getTransactionTimestamp(transaction)
     const nextTimestamp = getTransactionTimestamp(transactions[index + 1])
-    const stepId = resolveWorkflowChainStepId(index + 1)
-    const stepIndex = steps.findIndex((step) => step.id === stepId)
+    const senderContext = buildWorkflowSenderContextOptions(transaction, transactions)
+    const senderStepId = getPreferredWorkflowStepId(transaction?.sender || {}, senderContext)
+    const stepIndex = steps.findIndex((step) => step.id === senderStepId)
 
     if (stepIndex < 0 || currentTimestamp <= 0) {
       continue
@@ -537,10 +573,77 @@ const resolveBriefingStepIndexByTransactionWindow = (briefing = {}, transactions
   return -1
 }
 
+const resolveBriefingStepIndexByTransactionId = (briefing = {}, transactions = [], steps = []) => {
+  const transactionId = Number.parseInt(
+    briefing?.document_transaction_id
+    ?? briefing?.transaction_id
+    ?? 0,
+    10
+  )
+
+  if (!transactionId || !Array.isArray(transactions) || !transactions.length) {
+    return -1
+  }
+
+  const transaction = transactions.find((entry) => (
+    Number.parseInt(entry?.id, 10) === transactionId
+  ))
+
+  if (!transaction) {
+    return -1
+  }
+
+  const senderContext = buildWorkflowSenderContextOptions(transaction, transactions)
+  const senderStepId = getPreferredWorkflowStepId(transaction?.sender || {}, senderContext)
+  const stepIndex = steps.findIndex((step) => step.id === senderStepId)
+
+  return stepIndex >= 0 ? stepIndex : -1
+}
+
+const resolveBriefingStepIndexByActorAndTime = (briefing = {}, briefer = {}, steps = []) => {
+  const brieferName = extractDisplayName(briefer)
+  const briefingTimestamp = new Date(briefing?.created_at || briefing?.updated_at || 0).getTime()
+  const normalizedBriefingTimestamp = Number.isNaN(briefingTimestamp) ? 0 : briefingTimestamp
+
+  if (!brieferName || !normalizedBriefingTimestamp) {
+    return -1
+  }
+
+  let bestIndex = -1
+  let bestTimestamp = -1
+
+  steps.forEach((step, index) => {
+    const actedAt = getStepTimestamp(step)
+    const actorMatches = hasSameDisplayIdentity(step?.actedBy, brieferName)
+      || hasSameDisplayIdentity(step?.assigneeName, brieferName)
+
+    if (!actorMatches || actedAt <= 0 || actedAt > normalizedBriefingTimestamp) {
+      return
+    }
+
+    if (actedAt >= bestTimestamp) {
+      bestTimestamp = actedAt
+      bestIndex = index
+    }
+  })
+
+  return bestIndex
+}
+
 const resolveBriefingStepIndex = (briefing = {}, briefer = {}, steps = [], transactions = []) => {
+  const transactionIdIndex = resolveBriefingStepIndexByTransactionId(briefing, transactions, steps)
+  if (transactionIdIndex >= 0) {
+    return transactionIdIndex
+  }
+
   const transactionWindowIndex = resolveBriefingStepIndexByTransactionWindow(briefing, transactions, steps)
   if (transactionWindowIndex >= 0) {
     return transactionWindowIndex
+  }
+
+  const actorTimeIndex = resolveBriefingStepIndexByActorAndTime(briefing, briefer, steps)
+  if (actorTimeIndex >= 0) {
+    return actorTimeIndex
   }
 
   const matchedStepIds = getAllowedFlowStepIds(briefer, { isAdmin: false })
@@ -557,24 +660,6 @@ const resolveBriefingStepIndex = (briefing = {}, briefer = {}, steps = [], trans
     return currentStepIndex >= 0 ? currentStepIndex : 0
   }
 
-  const matchingCurrentIndex = candidateIndexes.find((index) => {
-    const step = steps[index]
-    return step?.status === 'current' && hasSameDisplayIdentity(step?.assigneeName, brieferName)
-  })
-
-  if (matchingCurrentIndex != null) {
-    return matchingCurrentIndex
-  }
-
-  const matchingActorIndex = candidateIndexes.find((index) => {
-    const step = steps[index]
-    return hasSameDisplayIdentity(step?.actedBy, brieferName) || hasSameDisplayIdentity(step?.assigneeName, brieferName)
-  })
-
-  if (matchingActorIndex != null && normalizedBriefingTimestamp <= 0) {
-    return matchingActorIndex
-  }
-
   const timedCandidate = candidateIndexes
     .map((index) => ({ index, timestamp: getStepTimestamp(steps[index]) }))
     .filter((candidate) => candidate.timestamp > 0 && candidate.timestamp <= normalizedBriefingTimestamp)
@@ -582,6 +667,15 @@ const resolveBriefingStepIndex = (briefing = {}, briefer = {}, steps = [], trans
 
   if (timedCandidate) {
     return timedCandidate.index
+  }
+
+  const matchingActorIndex = candidateIndexes.find((index) => {
+    const step = steps[index]
+    return hasSameDisplayIdentity(step?.actedBy, brieferName) || hasSameDisplayIdentity(step?.assigneeName, brieferName)
+  })
+
+  if (matchingActorIndex != null) {
+    return matchingActorIndex
   }
 
   return candidateIndexes[candidateIndexes.length - 1]
@@ -615,40 +709,341 @@ const applyDocumentBriefingsToSteps = (transaction = {}, steps = [], transaction
   return steps
 }
 
-const getPreferredWorkflowStepId = (source = {}) => {
+const isCabinetDirectorIdentity = (roleTexts = []) => roleTexts.some((text) => (
+  text.includes('docflow.cabinet.director')
+  || text.includes('cabinet.director@')
+  || (
+    (
+      text.includes('នាយកខុទ្ទកាល័យ')
+      || text.includes('cabinet director')
+      || text.includes('director of cabinet')
+      || text.includes('cabinet chief')
+      || text.includes('chief of cabinet')
+      || text.includes('director cabinet')
+      || text.includes('cabinet.director')
+      || text.includes('cabinet_director')
+    )
+    && !text.includes('មន្ត្រី')
+    && !text.includes('officer')
+  )
+))
+
+const isOfficeDpmOfficerIdentity = (roleTexts = []) => roleTexts.some((text) => (
+  text.includes('docflow.office.dpm')
+  || text.includes('office.dpm@')
+  || text.includes('office dpm')
+  || text.includes('office of dpm')
+  || text.includes('deputy prime minister office')
+  || text.includes('ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ')
+  || text.includes('ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្រ្តីប្រចាំការ')
+)) && roleTexts.some((text) => (
+  text.includes('មន្ត្រី')
+  || text.includes('officer')
+  || text.includes('deputy pm office')
+  || text.includes('deputypmoffice')
+))
+
+const isSpecialistUnitIdentity = (roleTexts = []) => roleTexts.some((text) => (
+  text.includes('docflow.specialist.unit')
+  || text.includes('specialist.unit@')
+  || text.includes('អង្គភាពជំនាញ')
+  || text.includes('specialist unit')
+  || text.includes('specialized unit')
+  || text.includes('នាយកដ្ឋានបច្ចេកវិទ្យានិងប្រតិបត្តិការឌីជីថល')
+))
+
+const isDepartmentHeadIdentity = (roleTexts = []) => roleTexts.some((text) => (
+  text.includes('docflow.department.head')
+  || text.includes('department.head@')
+  || text.includes('ប្រធាននាយកដ្ឋាន')
+  || text.includes('department head')
+  || text.includes('head of department')
+  || text.includes('head_of_department')
+  || text.includes('head.department')
+))
+
+const isAdminDepartmentOfficerIdentity = (roleTexts = []) => {
+  if (isDepartmentHeadIdentity(roleTexts)) {
+    return false
+  }
+
+  return roleTexts.some((text) => (
+    text.includes('docflow.admin.department')
+    || text.includes('admin.department@')
+    || text.includes('administration department')
+    || text.includes('department of administration')
+    || text.includes('administration_department')
+    || text.includes('administration.department')
+    || text.includes('នាយកដ្ឋានរដ្ឋបាល')
+  ))
+}
+
+const collectWorkflowIdentityTexts = (source = {}) => [
+  source?.username,
+  source?.email,
+  source?.role_name,
+  source?.sub_role,
+  source?.position?.name,
+  source?.current_position,
+  source?.organization?.name,
+  source?.current_organization,
+  ...collectNestedTexts(source?.position),
+  ...collectNestedTexts(source?.roles),
+  ...collectNestedTexts(source?.organization),
+  ...collectNestedTexts(source?.organization_structure_position),
+  ...collectNestedTexts(source?.organization_structure)
+]
+  .map((value) => normalizeSearchText(value))
+  .filter(Boolean)
+
+const getNextWorkflowStepId = (stepId = 0) => {
+  const normalizedStepId = Number.parseInt(stepId, 10)
+  const stepIndex = WORKFLOW_CHAIN_STEP_IDS.indexOf(normalizedStepId)
+  if (stepIndex < 0 || stepIndex >= WORKFLOW_CHAIN_STEP_IDS.length - 1) {
+    return 0
+  }
+
+  return WORKFLOW_CHAIN_STEP_IDS[stepIndex + 1]
+}
+
+export const getWorkflowForwardTargetStepId = (senderStepId = 0) => {
+  const normalizedSenderStepId = Number.parseInt(senderStepId, 10)
+
+  switch (normalizedSenderStepId) {
+    case 1:
+      return 2
+    case 2:
+      return 3
+    case 3:
+      return FLOW_BRANCH_STEP_ID
+    case FLOW_BRANCH_STEP_ID:
+      return FLOW_SPECIALIST_STEP_ID
+    case FLOW_SPECIALIST_STEP_ID:
+      return FLOW_RETURN_REVIEW_STEP_ID
+    case FLOW_RETURN_REVIEW_STEP_ID:
+      return FLOW_APPROVAL_STEP_ID
+    case FLOW_APPROVAL_STEP_ID:
+      return 0
+    default:
+      return getNextWorkflowStepId(normalizedSenderStepId)
+  }
+}
+
+const buildWorkflowSenderContextOptions = (entry = {}, transactions = [], visitedIds = new Set()) => {
+  const entryId = Number.parseInt(entry?.id, 10)
+  if (entryId > 0) {
+    if (visitedIds.has(entryId)) {
+      return {
+        afterSpecialistUnit: false,
+        afterReturnReviewOffice: false,
+        previousSenderStepId: 0
+      }
+    }
+    visitedIds.add(entryId)
+  }
+
+  const previousTransactionId = Number.parseInt(entry?.previous_transaction_id, 10)
+  let previousTransaction = entry?.previous
+
+  if (!previousTransaction && previousTransactionId > 0) {
+    previousTransaction = transactions.find((transaction) => (
+      Number.parseInt(transaction?.id, 10) === previousTransactionId
+    ))
+  }
+
+  const previousEntryId = Number.parseInt(previousTransaction?.id, 10)
+  if (!previousEntryId) {
+    return {
+      afterSpecialistUnit: false,
+      afterReturnReviewOffice: false,
+      previousSenderStepId: 0
+    }
+  }
+
+  const previousSenderTexts = collectWorkflowIdentityTexts(previousTransaction?.sender || {})
+  const afterSpecialistUnit = isSpecialistUnitIdentity(previousSenderTexts)
+  const previousSenderContext = buildWorkflowSenderContextOptions(previousTransaction, transactions, visitedIds)
+  const previousSenderStepId = getPreferredWorkflowStepId(previousTransaction?.sender || {}, previousSenderContext)
+  const afterReturnReviewOffice = previousSenderStepId === FLOW_RETURN_REVIEW_STEP_ID
+
+  return {
+    afterSpecialistUnit,
+    afterReturnReviewOffice,
+    previousSenderStepId
+  }
+}
+
+const resolveOfficeDpmWorkflowStepId = (roleTexts = [], matchedStepIds = [], senderStepId = 0, options = {}) => {
+  const canUseBranchStep = matchedStepIds.includes(FLOW_BRANCH_STEP_ID)
+  const canUseReturnReviewStep = matchedStepIds.includes(FLOW_RETURN_REVIEW_STEP_ID)
+  const normalizedSenderStepId = Number.parseInt(senderStepId, 10)
+  const afterSpecialistUnit = Boolean(options?.afterSpecialistUnit)
+
+  if (!canUseBranchStep && !canUseReturnReviewStep) {
+    return 0
+  }
+
+  if (normalizedSenderStepId === FLOW_APPROVAL_STEP_ID && canUseReturnReviewStep) {
+    return FLOW_RETURN_REVIEW_STEP_ID
+  }
+
+  if (
+    normalizedSenderStepId === FLOW_SPECIALIST_STEP_ID
+  ) {
+    return canUseReturnReviewStep ? FLOW_RETURN_REVIEW_STEP_ID : FLOW_BRANCH_STEP_ID
+  }
+
+  if (normalizedSenderStepId === 3 && canUseBranchStep) {
+    return FLOW_BRANCH_STEP_ID
+  }
+
+  if (afterSpecialistUnit && canUseReturnReviewStep) {
+    return FLOW_RETURN_REVIEW_STEP_ID
+  }
+
+  if (isOfficeDpmOfficerIdentity(roleTexts) && canUseBranchStep) {
+    return FLOW_BRANCH_STEP_ID
+  }
+
+  return canUseReturnReviewStep ? FLOW_RETURN_REVIEW_STEP_ID : FLOW_BRANCH_STEP_ID
+}
+
+const resolveCabinetDirectorWorkflowStepId = (matchedStepIds = [], senderStepId = 0, options = {}) => {
+  const normalizedSenderStepId = Number.parseInt(senderStepId, 10)
+  const canUseInitialStep = matchedStepIds.includes(3)
+  const canUseApprovalStep = matchedStepIds.includes(FLOW_APPROVAL_STEP_ID)
+
+  if (
+    (options?.afterReturnReviewOffice || normalizedSenderStepId === FLOW_RETURN_REVIEW_STEP_ID)
+    && canUseApprovalStep
+  ) {
+    return FLOW_APPROVAL_STEP_ID
+  }
+
+  if (canUseInitialStep) {
+    return 3
+  }
+
+  return canUseApprovalStep ? FLOW_APPROVAL_STEP_ID : 0
+}
+
+const isWorkflowReturnLeg = (senderStepId = 0, receiverSource = {}, options = {}) => {
+  const normalizedSenderStepId = Number.parseInt(senderStepId, 10)
+  const receiverStepId = getPreferredWorkflowStepId(receiverSource, {
+    senderStepId: normalizedSenderStepId,
+    ...options
+  })
+  const forwardTargetStepId = getWorkflowForwardTargetStepId(normalizedSenderStepId)
+
+  if (
+    forwardTargetStepId > 0
+    && receiverStepId > 0
+    && receiverStepId === forwardTargetStepId
+  ) {
+    return false
+  }
+
+  return receiverStepId > 0
+    && normalizedSenderStepId > 0
+    && receiverStepId < normalizedSenderStepId
+}
+
+const resolveTransactionReceiverStepId = (senderStepId = 0, receiverSource = {}) => {
+  const normalizedSenderStepId = Number.parseInt(senderStepId, 10)
+  const receiverIdentityStepId = getPreferredWorkflowStepId(receiverSource, {
+    senderStepId: normalizedSenderStepId
+  })
+  const expectedForwardStepId = getWorkflowForwardTargetStepId(normalizedSenderStepId)
+
+  if (isWorkflowReturnLeg(normalizedSenderStepId, receiverSource)) {
+    return receiverIdentityStepId
+  }
+
+  if (expectedForwardStepId > 0) {
+    if (receiverIdentityStepId <= 0) {
+      return expectedForwardStepId
+    }
+
+    if (receiverIdentityStepId === expectedForwardStepId) {
+      return expectedForwardStepId
+    }
+
+    if (receiverIdentityStepId <= normalizedSenderStepId) {
+      return expectedForwardStepId
+    }
+
+    if (receiverIdentityStepId - normalizedSenderStepId > 1) {
+      return expectedForwardStepId
+    }
+
+    return receiverIdentityStepId
+  }
+
+  return receiverIdentityStepId
+}
+
+export const getPreferredWorkflowStepId = (source = {}, options = {}) => {
   const matchedStepIds = getAllowedFlowStepIds(source)
   if (!matchedStepIds.length) {
     return 0
   }
 
-  const roleTexts = [
-    source?.role_name,
-    source?.sub_role,
-    source?.position?.name,
-    source?.current_position,
-    ...collectNestedTexts(source?.position),
-    ...collectNestedTexts(source?.roles),
-    ...collectNestedTexts(source?.organization_structure_position)
-  ]
-    .map((value) => normalizeSearchText(value))
-    .filter(Boolean)
-
-  const isCabinetDirector = roleTexts.some((text) => (
-    text.includes('នាយកខុទ្ទកាល័យ')
-    || text.includes('cabinet director')
-    || text.includes('director of cabinet')
-    || text.includes('cabinet chief')
-    || text.includes('chief of cabinet')
-    || text.includes('director cabinet')
-    || text.includes('cabinet.director')
-    || text.includes('cabinet_director')
-  ))
-
-  if (isCabinetDirector && matchedStepIds.includes(3)) {
-    return 3
+  const roleTexts = collectWorkflowIdentityTexts(source)
+  const senderStepId = Number.parseInt(options?.senderStepId, 10) || 0
+  const senderContext = {
+    afterSpecialistUnit: Boolean(options?.afterSpecialistUnit),
+    afterReturnReviewOffice: Boolean(options?.afterReturnReviewOffice)
   }
 
-  return Math.min(...matchedStepIds)
+  if (isDepartmentHeadIdentity(roleTexts) && matchedStepIds.includes(2)) {
+    return 2
+  }
+
+  if (isAdminDepartmentOfficerIdentity(roleTexts) && matchedStepIds.includes(1)) {
+    return 1
+  }
+
+  if (isCabinetDirectorIdentity(roleTexts)) {
+    const cabinetDirectorStepId = resolveCabinetDirectorWorkflowStepId(matchedStepIds, senderStepId, senderContext)
+    if (cabinetDirectorStepId > 0) {
+      return cabinetDirectorStepId
+    }
+  }
+
+  if (
+    isOfficeDpmOfficerIdentity(roleTexts)
+    || matchedStepIds.includes(FLOW_BRANCH_STEP_ID)
+    || matchedStepIds.includes(FLOW_RETURN_REVIEW_STEP_ID)
+  ) {
+    const officeDpmStepId = resolveOfficeDpmWorkflowStepId(roleTexts, matchedStepIds, senderStepId, senderContext)
+    if (officeDpmStepId > 0) {
+      return officeDpmStepId
+    }
+  }
+
+  if (isSpecialistUnitIdentity(roleTexts) && matchedStepIds.includes(FLOW_SPECIALIST_STEP_ID)) {
+    return FLOW_SPECIALIST_STEP_ID
+  }
+
+  return Math.max(...matchedStepIds)
+}
+
+export const getActingWorkflowStepIdForUser = (user = {}, transaction = {}) => {
+  const pendingTransaction = getWorkflowPendingTransactionForUser(user, transaction)
+  if (isUserPendingReceiver(user, pendingTransaction)) {
+    const senderContext = buildWorkflowSenderContextOptions(pendingTransaction, getWorkflowTransactionChain(transaction))
+    const senderStepId = getPreferredWorkflowStepId(pendingTransaction?.sender || {}, senderContext)
+    const forwardTargetStepId = getWorkflowForwardTargetStepId(senderStepId)
+
+    if (forwardTargetStepId > 0) {
+      const allowedStepIds = getAllowedFlowStepIds(user)
+      if (allowedStepIds.includes(forwardTargetStepId)) {
+        return forwardTargetStepId
+      }
+    }
+  }
+
+  return getPreferredWorkflowStepId(user) || 0
 }
 
 const resolveWorkflowChainStepId = (index = 0) => {
@@ -683,7 +1078,7 @@ const applyWorkflowIdentityProgress = ({ transaction = {}, transactionStatus = '
 
   receivers.forEach((receiver) => {
     const receiverSource = receiver?.user || receiver || {}
-    const receiverStepId = getPreferredWorkflowStepId(receiverSource)
+    const receiverStepId = resolveTransactionReceiverStepId(senderStepId, receiverSource)
     if (receiverStepId <= 0) {
       return
     }
@@ -706,8 +1101,7 @@ const applyWorkflowIdentityProgress = ({ transaction = {}, transactionStatus = '
       senderName,
       senderStepId,
       receiverName,
-      receiverStepId,
-      fallbackStepId: receiverStepId
+      receiverStepId
     })
     step.actedAt = receiver?.updated_at || receiver?.acted_at || receiver?.created_at || ''
 
@@ -725,26 +1119,84 @@ const reconcileOrderedStepStatuses = (steps = []) => {
   let furthestProgressIndex = -1
 
   steps.forEach((step, index) => {
-    if (index === 0) {
-      return
-    }
+    const hasProgress = Boolean(
+      step.assigneeName
+      || step.actedBy
+      || step.actedAt
+      || step.comments.length
+      || ['current', 'completed', 'returned'].includes(step.status)
+    )
 
-    const hasReceiverData = Boolean(step.assigneeName || step.actedAt || step.comments.length)
-    if (hasReceiverData && ['current', 'completed', 'returned'].includes(step.status)) {
+    if (hasProgress) {
       furthestProgressIndex = Math.max(furthestProgressIndex, index)
     }
   })
 
-  if (furthestProgressIndex <= 1) {
+  if (furthestProgressIndex <= 0) {
     return steps
   }
 
-  for (let index = 1; index < furthestProgressIndex; index += 1) {
+  for (let index = 0; index < furthestProgressIndex; index += 1) {
     const step = steps[index]
-    const hasReceiverData = Boolean(step.assigneeName || step.actedAt || step.comments.length)
-    if (hasReceiverData && step.status === 'pending') {
+    if (step.status === 'pending') {
       step.status = 'completed'
     }
+  }
+
+  const returnedStepIndex = steps.findIndex((step) => step.status === 'returned')
+  if (returnedStepIndex >= 0) {
+    for (let index = returnedStepIndex + 1; index < steps.length; index += 1) {
+      if (steps[index].status !== 'returned') {
+        steps[index].status = 'pending'
+        steps[index].assigneeName = ''
+        steps[index].actedBy = ''
+        steps[index].actedAt = ''
+      }
+    }
+  }
+
+  return steps
+}
+
+const reconcileLatestPendingForwardStep = (steps = [], latestTransaction = {}) => {
+  const transactionStatus = normalizeText(latestTransaction?.status).toLowerCase()
+  if (transactionStatus !== 'pending') {
+    return steps
+  }
+
+  const receivers = Array.isArray(latestTransaction?.receivers) ? latestTransaction.receivers : []
+  const pendingReceivers = receivers.filter((receiver) => !receiver?.accepted_at)
+  if (!pendingReceivers.length) {
+    return steps
+  }
+
+  const senderContext = buildWorkflowSenderContextOptions(
+    latestTransaction,
+    getWorkflowTransactionChain(latestTransaction)
+  )
+  const senderStepId = getPreferredWorkflowStepId(latestTransaction?.sender || {}, senderContext)
+  const forwardTargetStepId = getWorkflowForwardTargetStepId(senderStepId)
+  if (forwardTargetStepId <= 0) {
+    return steps
+  }
+
+  const targetsForwardStep = pendingReceivers.some((receiver) => (
+    resolveTransactionReceiverStepId(senderStepId, receiver?.user || receiver || {}) === forwardTargetStepId
+  ))
+
+  if (!targetsForwardStep) {
+    return steps
+  }
+
+  const forwardStep = steps[forwardTargetStepId - 1]
+  const senderStep = steps[senderStepId - 1]
+
+  if (forwardStep) {
+    forwardStep.status = 'current'
+  }
+
+  if (senderStep && senderStep.status === 'returned') {
+    senderStep.status = 'completed'
   }
 
   return steps
@@ -798,10 +1250,50 @@ const resolveForwardTargetStepId = (flowState = {}, action = 'send') => {
     case FLOW_RETURN_REVIEW_STEP_ID:
       return FLOW_APPROVAL_STEP_ID
     case FLOW_APPROVAL_STEP_ID:
-      return FLOW_RETURN_REVIEW_STEP_ID
+      return 0
     default:
       return 0
   }
+}
+
+const findTerminalCabinetApprovalTransaction = (transactions = []) => {
+  for (let index = transactions.length - 1; index >= 0; index -= 1) {
+    const entry = transactions[index]
+    const status = normalizeText(entry?.status).toLowerCase()
+
+    if (!['finished', 'finish', 'approved', 'completed', 'complete'].includes(status)) {
+      continue
+    }
+
+    const senderContext = buildWorkflowSenderContextOptions(entry, transactions)
+    const senderStepId = getPreferredWorkflowStepId(entry?.sender || {}, senderContext)
+
+    if (senderStepId === FLOW_APPROVAL_STEP_ID) {
+      return entry
+    }
+  }
+
+  return null
+}
+
+const applyTerminalCabinetApprovalState = (steps = [], terminalApproval = null) => {
+  if (!terminalApproval) {
+    return steps
+  }
+
+  steps.forEach((step) => {
+    if (step.status !== 'returned') {
+      step.status = 'completed'
+    }
+  })
+
+  const approvalStep = steps.find((step) => step.id === FLOW_APPROVAL_STEP_ID)
+  if (approvalStep) {
+    approvalStep.actedBy = approvalStep.actedBy || extractDisplayName(terminalApproval?.sender)
+    approvalStep.actedAt = approvalStep.actedAt || terminalApproval?.sent_at || terminalApproval?.updated_at || ''
+  }
+
+  return steps
 }
 
 const finalizeFlowState = (flowState, baseStatus = '') => {
@@ -853,7 +1345,7 @@ const finalizeFlowState = (flowState, baseStatus = '') => {
   return nextState
 }
 
-const getWorkflowTransactionChain = (transaction = {}) => {
+export const getWorkflowTransactionChain = (transaction = {}) => {
   const transactions = Array.isArray(transaction?.transactions) ? transaction.transactions : []
   const chain = [...transactions]
 
@@ -869,6 +1361,24 @@ const getWorkflowTransactionChain = (transaction = {}) => {
     .sort((left, right) => (Number.parseInt(left?.id, 10) || 0) - (Number.parseInt(right?.id, 10) || 0))
 }
 
+export const getWorkflowLatestTransaction = (transaction = {}) => {
+  const chain = getWorkflowTransactionChain(transaction)
+  return chain[chain.length - 1] || transaction
+}
+
+export const getWorkflowPendingTransactionForUser = (user = {}, transaction = {}) => {
+  const chain = getWorkflowTransactionChain(transaction)
+
+  for (let index = chain.length - 1; index >= 0; index -= 1) {
+    const entry = chain[index]
+    if (isUserPendingReceiver(user, entry)) {
+      return entry
+    }
+  }
+
+  return getWorkflowLatestTransaction(transaction)
+}
+
 const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] } = {}) => {
   if (!transactions.length) {
     return { latestTransaction: null, hasProgress: false }
@@ -881,7 +1391,8 @@ const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] }
     const transactionStatus = normalizeText(entry?.status).toLowerCase()
     const sender = entry?.sender || {}
     const senderName = extractDisplayName(sender)
-    const senderStepId = resolveWorkflowChainStepId(index) || getPreferredWorkflowStepId(sender)
+    const senderContext = buildWorkflowSenderContextOptions(entry, transactions)
+    const senderStepId = getPreferredWorkflowStepId(sender, senderContext) || resolveWorkflowChainStepId(index)
     const receivers = Array.isArray(entry?.receivers) ? entry.receivers : []
     const actedAt = entry?.sent_at || entry?.updated_at || entry?.created_at || entry?.date_in || ''
 
@@ -899,15 +1410,26 @@ const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] }
         senderStep.assigneeName = senderName || senderStep.assigneeName
         senderStep.actedBy = senderName || senderStep.actedBy
         senderStep.actedAt = actedAt || senderStep.actedAt
-        senderStep.status = isLatestTransaction && ['draft', 'progress'].includes(transactionStatus) && !receivers.length
-          ? 'current'
-          : 'completed'
+
+        const isReturnLeg = receivers.some((receiver) => (
+          isWorkflowReturnLeg(senderStepId, receiver?.user || receiver || {}, { senderStepId })
+        ))
+
+        if (isReturnLeg) {
+          senderStep.status = 'returned'
+        } else if (isLatestTransaction && ['draft', 'progress'].includes(transactionStatus) && !receivers.length) {
+          senderStep.status = 'current'
+        } else {
+          senderStep.status = 'completed'
+        }
       }
     }
 
     receivers.forEach((receiver) => {
       const receiverSource = receiver?.user || receiver || {}
-      const receiverStepId = resolveWorkflowChainStepId(index + 1) || getPreferredWorkflowStepId(receiverSource)
+      const isReturnLeg = isWorkflowReturnLeg(senderStepId, receiverSource, { senderStepId })
+      const receiverStepId = resolveTransactionReceiverStepId(senderStepId, receiverSource)
+        || resolveWorkflowChainStepId(index + 1)
       if (receiverStepId <= 0) {
         return
       }
@@ -930,13 +1452,19 @@ const applyWorkflowTransactionChainProgress = ({ transactions = [], steps = [] }
         senderName,
         senderStepId,
         receiverName,
-        receiverStepId,
-        fallbackStepId: receiverStepId
+        receiverStepId
       })
 
       if (isLatestTransaction && transactionStatus === 'pending' && !receiver?.accepted_at) {
         receiverStep.status = 'current'
         receiverStep.actedAt = receiver?.updated_at || receiver?.created_at || receiverStep.actedAt
+        return
+      }
+
+      if (isReturnLeg) {
+        receiverStep.status = 'completed'
+        receiverStep.actedBy = receiverName || receiverStep.actedBy
+        receiverStep.actedAt = receiverActedAt || receiverStep.actedAt
         return
       }
 
@@ -1009,6 +1537,32 @@ export const buildDocumentFlowState = (transaction = {}) => {
   )
 
   reconcileOrderedStepStatuses(steps)
+  reconcileLatestPendingForwardStep(steps, transactionChain[transactionChain.length - 1] || latestTransaction)
+
+  const terminalCabinetApproval = findTerminalCabinetApprovalTransaction(transactionChain)
+  const latestTransactionId = Number.parseInt(latestTransaction?.id, 10)
+  const terminalApprovalId = Number.parseInt(terminalCabinetApproval?.id, 10)
+  const workflowCompletedAtCabinet = terminalCabinetApproval != null
+    && (
+      latestTransactionId === terminalApprovalId
+      || (
+        latestTransactionId > terminalApprovalId
+        && transactionStatus === 'pending'
+      )
+    )
+
+  if (workflowCompletedAtCabinet) {
+    applyTerminalCabinetApprovalState(steps, terminalCabinetApproval)
+
+    return finalizeFlowState({
+      documentId: Number.parseInt(latestTransaction?.document?.id ?? transaction?.document?.id ?? latestTransaction?.id ?? transaction?.id, 10) || 0,
+      activeStepId: null,
+      currentRecipient: '',
+      overallStatus: 'approved',
+      updatedAt: toIsoString(terminalCabinetApproval?.updated_at || terminalCabinetApproval?.sent_at || ''),
+      steps
+    }, 'approved')
+  }
 
   return finalizeFlowState({
     documentId: Number.parseInt(latestTransaction?.document?.id ?? transaction?.document?.id ?? latestTransaction?.id ?? transaction?.id, 10) || 0,
@@ -1021,33 +1575,59 @@ export const buildDocumentFlowState = (transaction = {}) => {
 }
 
 export const getStoredDocumentFlowState = (documentId, transaction = null) => {
-  const normalizedId = String(Number.parseInt(documentId, 10) || '')
-  const store = readStore()
-  const storedValue = normalizedId ? store[normalizedId] : null
+  try {
+    const normalizedId = String(Number.parseInt(documentId, 10) || '')
+    const store = readStore()
+    const storedValue = normalizedId ? store[normalizedId] : null
 
-  if (transaction && typeof transaction === 'object') {
-    const backendState = buildDocumentFlowState(transaction)
-    if (storedValue && typeof storedValue === 'object') {
-      const preferStoredState = shouldPreferStoredFlowState(storedValue, backendState)
-      if (preferStoredState) {
-        return mergeStoredProgressIntoFlowState(backendState, storedValue)
-      }
+    if (transaction && typeof transaction === 'object') {
+      const backendState = buildDocumentFlowState(transaction)
+      const currentUser = getUser() || {}
+      const latestTransaction = getWorkflowLatestTransaction(transaction)
+      if (storedValue && typeof storedValue === 'object') {
+        const preferStoredState = shouldPreferStoredFlowState(storedValue, backendState)
+          && !isUserPendingReceiver(currentUser, latestTransaction)
+        if (preferStoredState) {
+          return mergeStoredProgressIntoFlowState(backendState, storedValue)
+        }
 
-      if (getFlowCommentCount(backendState) === 0 && getFlowCommentCount(storedValue) > 0) {
+        if (getFlowCommentCount(backendState) === 0 && getFlowCommentCount(storedValue) > 0) {
+          return mergeStoredCommentsIntoFlowState(backendState, storedValue)
+        }
+
         return mergeStoredCommentsIntoFlowState(backendState, storedValue)
       }
 
-      return mergeStoredCommentsIntoFlowState(backendState, storedValue)
+      return backendState
     }
 
-    return backendState
-  }
+    if (storedValue && typeof storedValue === 'object') {
+      return finalizeFlowState(storedValue, storedValue.overallStatus)
+    }
 
-  if (storedValue && typeof storedValue === 'object') {
-    return finalizeFlowState(storedValue, storedValue.overallStatus)
-  }
+    return buildDocumentFlowState(transaction || { id: documentId })
+  } catch (error) {
+    const normalizedId = String(Number.parseInt(documentId, 10) || '')
+    const store = readStore()
+    const storedValue = normalizedId ? store[normalizedId] : null
 
-  return buildDocumentFlowState(transaction || { id: documentId })
+    if (storedValue && typeof storedValue === 'object') {
+      return finalizeFlowState(storedValue, storedValue.overallStatus)
+    }
+
+    if (transaction && typeof transaction === 'object') {
+      return finalizeFlowState({
+        documentId: Number.parseInt(transaction?.document?.id ?? transaction?.document_id ?? documentId, 10) || 0,
+        activeStepId: 1,
+        currentRecipient: FLOW_STEP_TITLES[0],
+        overallStatus: normalizeText(transaction?.status).toLowerCase() || 'pending',
+        updatedAt: toIsoString(transaction?.updated_at || ''),
+        steps: FLOW_STEP_TITLES.map((title, index) => buildStepRecord(index, title))
+      }, transaction?.status)
+    }
+
+    return null
+  }
 }
 
 export const saveStoredDocumentFlowState = (documentId, flowState) => {
@@ -1136,6 +1716,14 @@ export const forwardCurrentFlowStep = (flowState, { actorName = '', message = ''
   currentStep.actedAt = now
 
   if (normalizedAction === 'approve') {
+    if (currentStep.id === FLOW_APPROVAL_STEP_ID) {
+      nextState.steps.forEach((step) => {
+        if (step.status !== 'returned') {
+          step.status = 'completed'
+        }
+      })
+    }
+
     nextState.activeStepId = null
     nextState.currentRecipient = ''
     nextState.overallStatus = 'approved'
@@ -1161,6 +1749,146 @@ export const forwardCurrentFlowStep = (flowState, { actorName = '', message = ''
   return nextState
 }
 
+export const getPreviousFlowStep = (flowState = {}) => {
+  const steps = Array.isArray(flowState?.steps) ? flowState.steps : []
+  const activeIndex = steps.findIndex((step) => step.id === flowState?.activeStepId)
+  if (activeIndex <= 0) {
+    return null
+  }
+
+  return steps[activeIndex - 1] || null
+}
+
+export const canRejectCurrentFlowStep = (flowState = {}) => {
+  const steps = Array.isArray(flowState?.steps) ? flowState.steps : []
+  const activeIndex = steps.findIndex((step) => step.id === flowState?.activeStepId)
+  return activeIndex > 0
+}
+
+export const getRejectActionLabel = (flowState = {}) => {
+  const previousStep = getPreviousFlowStep(flowState)
+  if (!previousStep?.title) {
+    return 'បដិសេធ និងបញ្ជូនត្រឡប់'
+  }
+
+  return `បដិសេធ និងបញ្ជូនត្រឡប់ទៅ${previousStep.title}`
+}
+
+export const isUserPendingReceiver = (user = {}, transaction = {}) => {
+  const receivers = Array.isArray(transaction?.receivers) ? transaction.receivers : []
+  const status = normalizeText(transaction?.status).toLowerCase()
+  const hasSentAt = Boolean(String(transaction?.sent_at || '').trim())
+
+  if (status === 'pending') {
+    // pending workflow leg
+  } else if (status === 'progress' && !hasSentAt) {
+    // outbound draft before dispatch
+  } else {
+    return false
+  }
+
+  const identityIds = [
+    user?.id,
+    user?.user_id,
+    user?.officer?.id,
+    user?.officer_id
+  ].map((value) => Number.parseInt(value, 10)).filter((value) => value > 0)
+
+  return receivers.some((receiver) => {
+    if (receiver?.accepted_at) {
+      return false
+    }
+
+    const receiverId = Number.parseInt(receiver?.receiver_id, 10)
+    if (receiverId > 0 && identityIds.includes(receiverId)) {
+      return true
+    }
+
+    return hasSharedIdentity(user, receiver?.user || receiver)
+  })
+}
+
+export const getPreviousSenderFromTransaction = (transaction = {}) => {
+  const chain = getWorkflowTransactionChain(transaction)
+  const latest = chain[chain.length - 1] || transaction
+
+  if (!latest || typeof latest !== 'object') {
+    return null
+  }
+
+  if (latest?.sender) {
+    return latest.sender
+  }
+
+  const previousTransactionId = Number.parseInt(latest?.previous_transaction_id, 10)
+  if (previousTransactionId > 0) {
+    const previous = chain.find((entry) => Number.parseInt(entry?.id, 10) === previousTransactionId)
+    if (previous?.sender) {
+      return previous.sender
+    }
+  }
+
+  if (chain.length > 1) {
+    return chain[chain.length - 2]?.sender || null
+  }
+
+  return null
+}
+
+export const canUserActOnWorkflowTransaction = (user = {}, transaction = {}) => {
+  const pendingTransaction = getWorkflowPendingTransactionForUser(user, transaction)
+  if (isUserPendingReceiver(user, pendingTransaction)) {
+    return true
+  }
+
+  const latest = getWorkflowLatestTransaction(transaction)
+  const status = normalizeText(latest?.status).toLowerCase()
+
+  if (hasSharedIdentity(user, latest?.sender || {}) && ['draft', 'progress'].includes(status)) {
+    return true
+  }
+
+  return false
+}
+
+export const canUserRejectWorkflowTransaction = (user = {}, transaction = {}) => {
+  const pendingTransaction = getWorkflowPendingTransactionForUser(user, transaction)
+
+  if (!isUserPendingReceiver(user, pendingTransaction)) {
+    return false
+  }
+
+  return getPreviousSenderFromTransaction(pendingTransaction) != null
+}
+
+export const getRejectActionLabelForTransaction = (transaction = {}) => {
+  const pendingTransaction = getWorkflowPendingTransactionForUser(getUser() || {}, transaction)
+  const previousSender = getPreviousSenderFromTransaction(
+    isUserPendingReceiver(getUser() || {}, pendingTransaction) ? pendingTransaction : transaction
+  )
+  const stepId = getPreferredWorkflowStepId(previousSender || {})
+
+  if (stepId > 0 && FLOW_STEP_TITLES[stepId - 1]) {
+    return `បដិសេធ និងបញ្ជូនត្រឡប់ទៅ${FLOW_STEP_TITLES[stepId - 1]}`
+  }
+
+  const senderName = extractDisplayName(previousSender)
+  if (senderName) {
+    return `បដិសេធ និងបញ្ជូនត្រឡប់ទៅ${senderName}`
+  }
+
+  return 'បដិសេធ និងបញ្ជូនត្រឡប់ទៅអ្នកបញ្ជូនមុន'
+}
+
+export const getActingStepTitleForUser = (user = {}, transaction = {}) => {
+  const stepId = getActingWorkflowStepIdForUser(user, transaction)
+  if (stepId > 0 && FLOW_STEP_TITLES[stepId - 1]) {
+    return FLOW_STEP_TITLES[stepId - 1]
+  }
+
+  return ''
+}
+
 export const sendBackCurrentFlowStep = (flowState, { actorName = '', message = '' } = {}) => {
   const nextState = cloneDeep(flowState)
   const activeIndex = nextState.steps.findIndex((step) => step.id === nextState.activeStepId)
@@ -1172,12 +1900,14 @@ export const sendBackCurrentFlowStep = (flowState, { actorName = '', message = '
   const currentStep = nextState.steps[activeIndex]
   const previousStep = nextState.steps[activeIndex - 1]
 
-  currentStep.comments.push(createCommentEntry({
-    type: 'return',
-    message: normalizeText(message) || 'សូមពិនិត្យ និងកែសម្រួលម្តងទៀត។',
-    actorName,
-    createdAt: now
-  }))
+  if (normalizeText(message)) {
+    currentStep.comments.push(createCommentEntry({
+      type: 'return',
+      message,
+      actorName,
+      createdAt: now
+    }))
+  }
 
   currentStep.status = 'returned'
   currentStep.actedBy = normalizeText(actorName) || currentStep.actedBy
@@ -1192,30 +1922,40 @@ export const sendBackCurrentFlowStep = (flowState, { actorName = '', message = '
 }
 
 export const applyDocumentFlowListOverride = (documentRecord) => {
-  const documentId = Number.parseInt(documentRecord?.id, 10)
-  if (!documentId) {
+  try {
+    const sourceTransaction = documentRecord?.transaction || documentRecord?.raw || null
+    const documentId = Number.parseInt(
+      documentRecord?.document_id
+      ?? sourceTransaction?.document_id
+      ?? sourceTransaction?.document?.id
+      ?? documentRecord?.id,
+      10
+    )
+    if (!documentId) {
+      return documentRecord
+    }
+
+    const flowState = documentRecord?.flowState
+      ? finalizeFlowState(documentRecord.flowState, documentRecord.flowState.overallStatus)
+      : sourceTransaction
+        ? buildDocumentFlowState(sourceTransaction)
+        : readStore()[String(documentId)]
+
+    if (!flowState) {
+      return documentRecord
+    }
+
+    const normalizedState = finalizeFlowState(flowState, flowState.overallStatus)
+    const normalizedRecordStatus = normalizeText(sourceTransaction?.status || documentRecord?.status).toLowerCase()
+    return {
+      ...documentRecord,
+      flowState: normalizedState,
+      status: normalizedRecordStatus || normalizedState.overallStatus || documentRecord.status,
+      displayStatusAction: getLatestHistoryActionType(sourceTransaction || documentRecord, normalizedState),
+      sentTo: normalizedState.currentRecipient || documentRecord.sentTo
+    }
+  } catch (error) {
     return documentRecord
-  }
-
-  const sourceTransaction = documentRecord?.transaction || documentRecord?.raw || null
-  const flowState = documentRecord?.flowState
-    ? finalizeFlowState(documentRecord.flowState, documentRecord.flowState.overallStatus)
-    : sourceTransaction
-      ? buildDocumentFlowState(sourceTransaction)
-      : readStore()[String(documentId)]
-
-  if (!flowState) {
-    return documentRecord
-  }
-
-  const normalizedState = finalizeFlowState(flowState, flowState.overallStatus)
-  const normalizedRecordStatus = normalizeText(sourceTransaction?.status || documentRecord?.status).toLowerCase()
-  return {
-    ...documentRecord,
-    flowState: normalizedState,
-    status: normalizedRecordStatus || normalizedState.overallStatus || documentRecord.status,
-    displayStatusAction: getLatestHistoryActionType(sourceTransaction || documentRecord, normalizedState),
-    sentTo: normalizedState.currentRecipient || documentRecord.sentTo
   }
 }
 
@@ -1240,9 +1980,13 @@ const getWorkflowRecordDedupKey = (record = {}) => {
   return `transaction:${transaction?.id ?? record?.id ?? Math.random().toString(16).slice(2)}`
 }
 
-const getWorkflowRecordPriority = (record = {}) => {
+const getWorkflowRecordPriority = (record = {}, user = null) => {
   const transaction = record?.transaction || record?.raw || record
   const normalizedStatus = normalizeText(record?.flowState?.overallStatus || transaction?.status || record?.status).toLowerCase()
+
+  if (user && isUserPendingReceiver(user, transaction)) {
+    return 5
+  }
 
   if (['pending', 'current', 'processing', 'progressing', 'in_progress'].includes(normalizedStatus)) {
     return 4
@@ -1268,7 +2012,7 @@ const getWorkflowRecordUpdatedAt = (record = {}) => {
   return record?.updatedAt || record?.flowState?.updatedAt || transaction?.updated_at || transaction?.sent_at || transaction?.created_at || ''
 }
 
-export const dedupeWorkflowRecords = (records = []) => {
+export const dedupeWorkflowRecords = (records = [], user = null) => {
   const groupedRecords = new Map()
 
   records.forEach((record) => {
@@ -1280,8 +2024,8 @@ export const dedupeWorkflowRecords = (records = []) => {
       return
     }
 
-    const candidatePriority = getWorkflowRecordPriority(record)
-    const existingPriority = getWorkflowRecordPriority(existingRecord)
+    const candidatePriority = getWorkflowRecordPriority(record, user)
+    const existingPriority = getWorkflowRecordPriority(existingRecord, user)
 
     if (candidatePriority !== existingPriority) {
       if (candidatePriority > existingPriority) {
@@ -1408,12 +2152,22 @@ export const canUserAccessFlowRecord = (user = {}, documentRecord = {}, { isAdmi
     return true
   }
 
+  const activeStepId = Number.parseInt(documentRecord?.flowState?.activeStepId, 10)
+  if (activeStepId > 0 && allowedStepIds.includes(activeStepId)) {
+    return true
+  }
+
   const currentStepId = getFlowStepIdByTitle(documentRecord?.flowState?.currentRecipient || documentRecord?.sentTo)
   if (currentStepId > 0 && allowedStepIds.includes(currentStepId)) {
     return true
   }
 
   const transaction = documentRecord?.transaction || documentRecord?.raw || documentRecord
+
+  if (isUserPendingReceiver(user, transaction)) {
+    return true
+  }
+
   const receivers = Array.isArray(transaction?.receivers) ? transaction.receivers : []
   const currentReceivers = receivers.filter((receiver) => normalizeReceiverStatus(receiver?.status || receiver?.action || receiver?.state) === 'current')
 
@@ -1464,4 +2218,45 @@ export const getAllowedFlowStepTitles = (user = {}, options = {}) => {
   return getAllowedFlowStepIds(user, options)
     .map((stepId) => FLOW_STEP_TITLES[stepId - 1])
     .filter(Boolean)
+}
+
+export const isAdminDepartmentOfficerUser = (user = {}) => (
+  isAdminDepartmentOfficerIdentity(collectWorkflowIdentityTexts(user))
+)
+
+export const canUserDeleteAnyWorkflowDocument = (user = {}, { isAdmin = false } = {}) => (
+  isAdmin || isAdminDepartmentOfficerUser(user)
+)
+
+export const canDeleteWorkflowDocument = (
+  user = {},
+  documentRecord = {},
+  { isAdmin = false } = {}
+) => {
+  if (canUserDeleteAnyWorkflowDocument(user, { isAdmin })) {
+    return true
+  }
+
+  const senderId = documentRecord?.sender_id ?? documentRecord?.senderId
+  if (senderId == null || user?.id == null) {
+    return false
+  }
+
+  return Number(senderId) === Number(user.id)
+}
+
+export const isWorkflowDocumentDeleteDisabled = (
+  documentRecord = {},
+  user = {},
+  { isAdmin = false, deleting = false } = {}
+) => {
+  if (deleting) {
+    return true
+  }
+
+  if (canUserDeleteAnyWorkflowDocument(user, { isAdmin })) {
+    return false
+  }
+
+  return String(documentRecord?.status || '').trim().toLowerCase() === 'approved'
 }

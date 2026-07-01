@@ -71,14 +71,14 @@
     <div class="dc_composer">
       <div class="dc_composer_header">
         <h4 class="font-khmer font-semibold t-lspace">
-          {{ currentStep ? `មតិយោបល់សម្រាប់ ${currentStep.title}` : 'លំហូរបានបញ្ចប់' }}
+          {{ composerTitle }}
         </h4>
         <span v-if="flowState?.currentRecipient" class="dc_recipient_badge">
           កំពុងរង់ចាំ: {{ flowState.currentRecipient }}
         </span>
       </div>
 
-      <p v-if="currentStep && !canActOnCurrentStep" class="dc_permission_hint">
+      <p v-if="!canActOnCurrentStep && permissionHint" class="dc_permission_hint">
         {{ permissionHint }}
       </p>
 
@@ -86,11 +86,57 @@
         v-model="commentDraft"
         rows="4"
         :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
-        placeholder="បញ្ចូលមតិយោបល់មុនបញ្ជូនឯកសារ..."
+        :placeholder="commentPlaceholder"
         class="w-full rounded-sm border p-3 text-sm focus:ring-2 focus:ring-blue-500"
       />
+      <p v-if="canActOnCurrentStep" class="dc_comment_hint">
+        មតិយោបល់ជាជម្រើស — អាចទុកទទេ ឬបញ្ចូលមុនពេលបញ្ជូន / បដិសេធ
+      </p>
 
-      <div v-if="currentStep && canChooseFlowBranch" class="dc_flow_choice">
+      <div v-if="showStandardDecisionChoice" class="dc_flow_choice">
+        <p class="dc_flow_choice_label">ជ្រើសរើសសេចក្តីសម្រេចចិត្ត</p>
+
+        <label
+          class="dc_flow_option"
+          :class="{
+            'dc_flow_option--active': selectedWorkflowDecision === 'forward',
+            'dc_flow_option--primary': selectedWorkflowDecision === 'forward'
+          }"
+        >
+          <input
+            v-model="selectedWorkflowDecision"
+            type="radio"
+            value="forward"
+            :disabled="isSubmittingWorkflow"
+          />
+          <span>
+            <strong>{{ forwardDecisionTitle }}</strong>
+            <small>{{ forwardDecisionDescription }}</small>
+          </span>
+        </label>
+
+        <label
+          v-if="canRejectDocument"
+          class="dc_flow_option"
+          :class="{
+            'dc_flow_option--active': selectedWorkflowDecision === 'reject',
+            'dc_flow_option--danger': selectedWorkflowDecision === 'reject'
+          }"
+        >
+          <input
+            v-model="selectedWorkflowDecision"
+            type="radio"
+            value="reject"
+            :disabled="isSubmittingWorkflow"
+          />
+          <span>
+            <strong>បដិសេធ និងបញ្ជូនត្រឡប់</strong>
+            <small>{{ rejectDecisionDescription }}</small>
+          </span>
+        </label>
+      </div>
+
+      <div v-if="canActOnCurrentStep && canChooseFlowBranch" class="dc_flow_choice">
         <p class="dc_flow_choice_label">ជ្រើសរើសសកម្មភាពលំហូរ</p>
 
         <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'send' }">
@@ -120,56 +166,21 @@
         </label>
       </div>
 
-      <div v-if="currentStep && canChooseFinalDecision" class="dc_flow_choice">
-        <p class="dc_flow_choice_label">ជ្រើសរើសសកម្មភាពសម្រាប់នាយកខុទ្ទកាល័យ</p>
-
-        <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'send' }">
-          <input
-            v-model="selectedFlowAction"
-            type="radio"
-            value="send"
-            :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
-          />
-          <span>
-            <strong>បញ្ជូនត្រឡប់ទៅខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ</strong>
-            <small>បញ្ជូនត្រឡប់ទៅជំហានទី៦ ដើម្បីពិនិត្យបន្ថែមមុនបញ្ចប់</small>
-          </span>
-        </label>
-
-        <label class="dc_flow_option" :class="{ 'dc_flow_option--active': selectedFlowAction === 'approve' }">
-          <input
-            v-model="selectedFlowAction"
-            type="radio"
-            value="approve"
-            :disabled="!canActOnCurrentStep || isSubmittingWorkflow"
-          />
-          <span>
-            <strong>អនុម័តបញ្ចប់</strong>
-            <small>បញ្ចប់លំហូរឯកសារនេះជាស្ថាពរ</small>
-          </span>
-        </label>
+      <div v-if="canActOnCurrentStep && canChooseFinalDecision" class="dc_flow_choice">
+        <p class="dc_flow_choice_label">សកម្មភាពចុងក្រោយសម្រាប់នាយកខុទ្ទកាល័យ</p>
+        <p class="dc_flow_choice_hint">អនុម័តបញ្ចប់ ដើម្បីបញ្ចប់លំហូរឯកសារនេះជាស្ថាពរ (មិនបញ្ជូនត្រឡប់ទៅខុទ្ទកាល័យឧបនាយករដ្ឋមន្ត្រី)។</p>
       </div>
 
-      <div class="dc_composer_actions">
-        <button
-          type="button"
-          class="inline-flex items-center btn_dc btn_dc--secondary"
-          :disabled="!canActOnCurrentStep || !commentDraft.trim() || isSubmittingWorkflow"
-          @click="handleCommentOnly"
-        >
-          បញ្ចូលមតិយោបល់
-        </button>
-
-        <button
-          v-if="currentStep"
-          type="button"
-          class="inline-flex items-center btn_dc btn_dc--primary"
-          :disabled="primaryActionDisabled"
-          @click="handleForward"
-        >
-          {{ primaryActionLabel }}
-        </button>
-      </div>
+      <button
+        v-if="canActOnCurrentStep"
+        type="button"
+        class="btn_dc dc_composer_submit"
+        :class="submitDecisionButtonClass"
+        :disabled="submitDecisionDisabled"
+        @click="handleSubmitDecision"
+      >
+        {{ submitDecisionLabel }}
+      </button>
     </div>
   </div>
 </template>
@@ -182,16 +193,20 @@ import { formatDateKhmer, formatKhmerNumber } from '@/lib/utils'
 import {
   FLOW_APPROVAL_STEP_ID,
   FLOW_BRANCH_STEP_ID,
-  addCommentToCurrentFlowStep,
   buildDocumentFlowState,
   canUserUseExplicitFlowActions,
   clearStoredDocumentFlowState,
   forwardCurrentFlowStep,
+  sendBackCurrentFlowStep,
   getFlowProgressSignature,
-  getAllowedFlowStepIds,
+  getPreferredWorkflowStepId,
   getStoredDocumentFlowState,
   saveStoredDocumentFlowState,
-  sendBackCurrentFlowStep
+  canUserActOnWorkflowTransaction,
+  canUserRejectWorkflowTransaction,
+  getActingStepTitleForUser,
+  getActingWorkflowStepIdForUser,
+  getRejectActionLabelForTransaction
 } from '@/lib/documentFlow'
 import { getUser, isAdmin } from '@/plugins/authentication'
 
@@ -213,6 +228,7 @@ const emit = defineEmits(['updated'])
 const commentDraft = ref('')
 const isSubmittingWorkflow = ref(false)
 const selectedFlowAction = ref('')
+const selectedWorkflowDecision = ref('')
 const documentFlowStorageKey = computed(() => (
   props.transaction?.document?.id
   ?? props.transaction?.document_id
@@ -226,11 +242,13 @@ const syncFlowState = () => {
 
 const getInitialSelectedFlowAction = (stepId) => {
   if (stepId === FLOW_APPROVAL_STEP_ID) {
-    return ''
+    return 'approve'
   }
 
   return 'send'
 }
+
+const getInitialWorkflowDecision = () => ''
 
 watch(
   () => [props.documentId, documentFlowStorageKey.value, props.transaction?.id, props.transaction?.updated_at],
@@ -238,6 +256,7 @@ watch(
     syncFlowState()
     commentDraft.value = ''
     selectedFlowAction.value = getInitialSelectedFlowAction(flowState.value?.activeStepId)
+    selectedWorkflowDecision.value = getInitialWorkflowDecision()
   },
   { immediate: true }
 )
@@ -247,54 +266,76 @@ const currentStep = computed(() => flowSteps.value.find((step) => step.id === fl
 const currentUser = computed(() => getUser() || {})
 const userIsAdmin = computed(() => isAdmin())
 const canUseExplicitFlowActions = computed(() => canUserUseExplicitFlowActions(currentUser.value))
-const normalizeIdentityValue = (value) => String(value ?? '').trim().toLowerCase()
-const currentUserIdentitySet = computed(() => {
-  const user = currentUser.value || {}
-  const fullName = user.lastname && user.firstname
-    ? `${user.lastname} ${user.firstname}`
-    : user.fullname || user.name || ''
-
-  return new Set([
-    user.id,
-    user.user_id,
-    user.username,
-    user.email,
-    fullName
-  ].map((value) => normalizeIdentityValue(value)).filter(Boolean))
-})
-const allowedStepIds = computed(() => getAllowedFlowStepIds(currentUser.value, { isAdmin: userIsAdmin.value }))
-const currentStepAssigneeMatchesCurrentUser = computed(() => {
-  const step = currentStep.value
-  if (!step) {
-    return false
-  }
-
-  const assigneeCandidates = [
-    step.assigneeName,
-    step.actedBy
-  ].map((value) => normalizeIdentityValue(value)).filter(Boolean)
-
-  if (!assigneeCandidates.length) {
-    return true
-  }
-
-  return assigneeCandidates.some((value) => currentUserIdentitySet.value.has(value))
-})
-const canActOnCurrentStep = computed(() => Boolean(
-  currentStep.value
-  && allowedStepIds.value.includes(currentStep.value.id)
-  && currentStepAssigneeMatchesCurrentUser.value
+const userActingStepId = computed(() => (
+  getActingWorkflowStepIdForUser(currentUser.value, props.transaction) || 0
 ))
+const canActOnCurrentStep = computed(() => Boolean(
+  props.transaction
+  && canUserActOnWorkflowTransaction(currentUser.value, props.transaction)
+))
+const composerTitle = computed(() => {
+  if (canActOnCurrentStep.value) {
+    const actingTitle = getActingStepTitleForUser(currentUser.value, props.transaction)
+    if (actingTitle) {
+      return `មតិយោបល់សម្រាប់ ${actingTitle}`
+    }
+  }
+
+  if (currentStep.value?.title) {
+    return `មតិយោបល់សម្រាប់ ${currentStep.value.title}`
+  }
+
+  if (flowState.value?.currentRecipient) {
+    return `មតិយោបល់សម្រាប់ ${flowState.value.currentRecipient}`
+  }
+
+  return 'លំហូរបានបញ្ចប់'
+})
 const canChooseFlowBranch = computed(() => Boolean(
-  canUseExplicitFlowActions.value
-  && currentStep.value
-  && currentStep.value.id === FLOW_BRANCH_STEP_ID
+  canActOnCurrentStep.value
+  && canUseExplicitFlowActions.value
+  && userActingStepId.value === FLOW_BRANCH_STEP_ID
 ))
 const canChooseFinalDecision = computed(() => Boolean(
   canActOnCurrentStep.value
-  && currentStep.value
-  && currentStep.value.id === FLOW_APPROVAL_STEP_ID
+  && userActingStepId.value === FLOW_APPROVAL_STEP_ID
 ))
+const showStandardDecisionChoice = computed(() => Boolean(
+  canActOnCurrentStep.value
+  && !canChooseFlowBranch.value
+  && !canChooseFinalDecision.value
+))
+const forwardDecisionTitle = computed(() => {
+  if (userActingStepId.value === 5) {
+    return 'បញ្ជូនបន្ត'
+  }
+
+  return 'បញ្ជូនបន្ត'
+})
+const forwardDecisionDescription = computed(() => (
+  flowState.value?.currentRecipient
+    ? `ផ្ញើឯកសារទៅ${flowState.value.currentRecipient}`
+    : 'ផ្ញើឯកសារទៅអ្នកទទួលបន្ទាប់'
+))
+const rejectDecisionDescription = computed(() => {
+  const labelParts = rejectActionLabel.value.split('ទៅ')
+  if (labelParts.length > 1) {
+    return `បញ្ជូនត្រឡប់ទៅ${labelParts.slice(1).join('ទៅ').trim()}`
+  }
+
+  return 'បញ្ជូនត្រឡប់ទៅអ្នកបញ្ជូនមុន'
+})
+const commentPlaceholder = computed(() => {
+  if (selectedWorkflowDecision.value === 'reject') {
+    return 'មតិយោបល់ (ជម្រើស) សម្រាប់ការបដិសេធ...'
+  }
+
+  if (canChooseFinalDecision.value || canChooseFlowBranch.value) {
+    return 'មតិយោបល់ (ជម្រើស) សម្រាប់សកម្មភាពនេះ...'
+  }
+
+  return 'មតិយោបល់ (ជម្រើស) សម្រាប់ការបញ្ជូន...'
+})
 const normalizedSelectedFlowAction = computed(() => {
   if (canChooseFinalDecision.value) {
     if (selectedFlowAction.value === 'approve') {
@@ -314,15 +355,12 @@ const normalizedSelectedFlowAction = computed(() => {
 
   return selectedFlowAction.value === 'diy' ? 'diy' : 'send'
 })
-const requiresExplicitFlowChoice = computed(() => Boolean(
-  currentStep.value
-  && currentStep.value.id === FLOW_APPROVAL_STEP_ID
+const requiresExplicitFlowChoice = computed(() => userActingStepId.value === FLOW_APPROVAL_STEP_ID)
+const canRejectDocument = computed(() => Boolean(
+  props.transaction
+  && canUserRejectWorkflowTransaction(currentUser.value, props.transaction)
 ))
-const primaryActionDisabled = computed(() => (
-  !canActOnCurrentStep.value
-  || isSubmittingWorkflow.value
-  || (requiresExplicitFlowChoice.value && !normalizedSelectedFlowAction.value)
-))
+const rejectActionLabel = computed(() => getRejectActionLabelForTransaction(props.transaction))
 const primaryActionLabel = computed(() => {
   if (canChooseFinalDecision.value) {
     if (!normalizedSelectedFlowAction.value) {
@@ -335,27 +373,97 @@ const primaryActionLabel = computed(() => {
   }
 
   if (!canChooseFlowBranch.value) {
-    return currentStep.value?.id === 5 ? 'បញ្ជូនត្រឡប់ទៅខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ' : 'បញ្ជូនបន្ត'
+    return userActingStepId.value === 5
+      ? 'បញ្ជូនបន្ត'
+      : 'បញ្ជូនបន្ត'
   }
 
   return normalizedSelectedFlowAction.value === 'diy'
     ? 'ដំណើរការដោយខ្លួនឯង'
     : 'បញ្ជូនបន្ត'
 })
+const submitDecisionLabel = computed(() => {
+  if (canChooseFinalDecision.value) {
+    if (!normalizedSelectedFlowAction.value) {
+      return 'បញ្ធការសម្រេចចិត្ត'
+    }
+
+    return normalizedSelectedFlowAction.value === 'approve'
+      ? 'អនុម័តបញ្ចប់'
+      : 'បញ្ជូនបន្ត'
+  }
+
+  if (canChooseFlowBranch.value) {
+    return normalizedSelectedFlowAction.value === 'diy'
+      ? 'ដំណើរការដោយខ្លួនឯង'
+      : 'បញ្ជូនបន្ត'
+  }
+
+  switch (selectedWorkflowDecision.value) {
+    case 'reject':
+      return 'បដិសេដ'
+    case 'forward':
+      return primaryActionLabel.value
+    default:
+      return 'បញ្ធការសម្រេចចិត្ត'
+  }
+})
+const submitDecisionDisabled = computed(() => {
+  if (!canActOnCurrentStep.value || isSubmittingWorkflow.value) {
+    return true
+  }
+
+  if (canChooseFinalDecision.value) {
+    return !normalizedSelectedFlowAction.value
+  }
+
+  if (canChooseFlowBranch.value) {
+    return !selectedFlowAction.value
+  }
+
+  if (!selectedWorkflowDecision.value) {
+    return true
+  }
+
+  if (selectedWorkflowDecision.value === 'reject' && !canRejectDocument.value) {
+    return true
+  }
+
+  return false
+})
+const submitDecisionButtonClass = computed(() => {
+  if (canChooseFinalDecision.value || canChooseFlowBranch.value) {
+    return 'btn_dc--primary'
+  }
+
+  if (selectedWorkflowDecision.value === 'reject') {
+    return 'btn_dc--danger'
+  }
+
+  if (selectedWorkflowDecision.value === 'forward') {
+    return 'btn_dc--primary'
+  }
+
+  return 'btn_dc--primary'
+})
 const permissionHint = computed(() => {
-  if (!currentStep.value) {
+  if (canActOnCurrentStep.value) {
     return ''
   }
 
-  if (allowedStepIds.value.length === 0) {
-    return `អ្នកមិនមានសិទ្ធិដំណើរការជំហាន ${currentStep.value.title} ទេ។`
+  if (flowState.value?.overallStatus === 'approved') {
+    return 'ឯកសារនេះបានអនុម័ត និងបញ្ចប់លំហូរដំណើរការជាស្ថាពរ។'
   }
 
-  if (!currentStepAssigneeMatchesCurrentUser.value) {
-    return `ជំហាន ${currentStep.value.title} ត្រូវបានផ្ទេរទៅអ្នកប្រើប្រាស់ផ្សេងរួចហើយ។`
+  if (flowState.value?.currentRecipient) {
+    return `ឯកសារនេះកំពុងរង់ចាំ ${flowState.value.currentRecipient} ដើម្បីពិនិត្យ និងដំណើរការ។`
   }
 
-  return `អ្នកអាចដំណើរការបានតែជំហាន ${allowedStepIds.value.map((stepId) => flowSteps.value.find((step) => step.id === stepId)?.title).filter(Boolean).join(' / ')} ប៉ុណ្ណោះ។`
+  if (currentStep.value?.title) {
+    return `ជំហាន ${currentStep.value.title} កំពុងរង់ចាំអ្នកទទួលផ្សេង។`
+  }
+
+  return 'អ្នកមិនមានសិទ្ធិដំណើរការឯកសារនេះក្នុងដំណាក់កាលបច្ចុប្បន្នទេ។'
 })
 
 const currentActorName = computed(() => {
@@ -370,20 +478,46 @@ const currentActorName = computed(() => {
 
 const buildWorkflowPayload = () => {
   const actionTransactionId = props.transaction?.id ?? props.documentId
+  const trimmedComment = commentDraft.value.trim()
   const payload = {
     id: actionTransactionId,
     transaction_id: actionTransactionId,
+    document_transaction_id: actionTransactionId,
     current_transaction_id: actionTransactionId,
     document_transaction_id: props.transaction?.id ?? props.documentId,
     source_transaction_id: props.transaction?.id ?? props.documentId,
     flow_action: normalizedSelectedFlowAction.value,
     action: normalizedSelectedFlowAction.value,
-    comment: commentDraft.value,
-    note: commentDraft.value,
-    remark: commentDraft.value
+    comment: trimmedComment,
+    note: trimmedComment,
+    remark: trimmedComment,
+    briefing: trimmedComment
   }
 
   return payload
+}
+
+const resolveDocumentId = () => (
+  props.transaction?.document?.id
+  ?? props.transaction?.document_id
+  ?? null
+)
+
+const persistWorkflowComment = async () => {
+  const trimmedComment = commentDraft.value.trim()
+  const documentId = resolveDocumentId()
+  const transactionId = props.transaction?.id ?? props.documentId
+
+  if (!trimmedComment || !documentId) {
+    return
+  }
+
+  await store.dispatch('transaction/addBriefing', {
+    document_id: documentId,
+    document_transaction_id: transactionId,
+    transaction_id: transactionId,
+    briefing: trimmedComment
+  })
 }
 
 const getRequestErrorMessage = (error, fallbackMessage) => {
@@ -447,29 +581,81 @@ const syncWithBackend = async (successMessage, fallbackFlowState = null) => {
   }
 }
 
-const handleCommentOnly = async () => {
-  if (!canActOnCurrentStep.value || !commentDraft.value.trim() || isSubmittingWorkflow.value) {
+const handleSubmitDecision = async () => {
+  if (submitDecisionDisabled.value) {
+    if (showStandardDecisionChoice.value && !selectedWorkflowDecision.value) {
+      toast.error('សូមជ្រើសរើសសេចក្តីសម្រេចចិត្តមុនបញ្ធការ')
+    }
+    return
+  }
+
+  if (canChooseFinalDecision.value) {
+    selectedFlowAction.value = 'approve'
+    return handleForward()
+  }
+
+  if (canChooseFlowBranch.value) {
+    return handleForward()
+  }
+
+  if (selectedWorkflowDecision.value === 'reject') {
+    return handleReject()
+  }
+
+  if (selectedWorkflowDecision.value === 'forward') {
+    return handleForward()
+  }
+}
+
+const handleReject = async () => {
+  if (!canRejectDocument.value || isSubmittingWorkflow.value) {
     return
   }
 
   isSubmittingWorkflow.value = true
 
   try {
-    await store.dispatch('transaction/addBriefing', {
-      document_id: props.transaction?.document?.id ?? props.transaction?.document_id,
-      briefing: commentDraft.value.trim()
-    })
+    const workflowPayload = buildWorkflowPayload()
+    workflowPayload.flow_action = 'reject'
+    workflowPayload.action = 'reject'
 
-    const optimisticState = addCommentToCurrentFlowStep(flowState.value, {
+    clearStoredDocumentFlowState(documentFlowStorageKey.value)
+
+    if (commentDraft.value.trim()) {
+      await persistWorkflowComment()
+    }
+
+    await store.dispatch('transaction/reject', workflowPayload)
+
+    const optimisticFlowState = sendBackCurrentFlowStep(flowState.value, {
       actorName: currentActorName.value,
-      message: commentDraft.value
+      message: commentDraft.value.trim()
     })
-    flowState.value = saveStoredDocumentFlowState(documentFlowStorageKey.value, optimisticState)
 
-    await syncWithBackend('បានរក្សាទុកមតិយោបល់', optimisticState)
+    await syncWithBackend('បានបដិសេធ និងបញ្ជូនត្រឡប់ទៅអ្នកបញ្ជូនមុន', optimisticFlowState)
   } catch (error) {
     console.error(error)
-    toast.error(getRequestErrorMessage(error, 'មិនអាចរក្សាទុកមតិយោបល់បានទេ'))
+    console.error('workflow reject response', error?.response?.data)
+
+    try {
+      const refreshed = await reloadTransaction()
+      if (refreshed) {
+        clearStoredDocumentFlowState(documentFlowStorageKey.value)
+        const backendState = getStoredDocumentFlowState(documentFlowStorageKey.value, refreshed)
+        const previousStepId = flowState.value?.activeStepId
+        if (backendState?.activeStepId && backendState.activeStepId !== previousStepId) {
+          flowState.value = backendState
+          commentDraft.value = ''
+          emit('updated', refreshed)
+          toast.success('បានបដិសេធ និងបញ្ជូនត្រឡប់ទៅអ្នកបញ្ជូនមុន')
+          return
+        }
+      }
+    } catch (_syncError) {
+      // ignore sync error, show original error below
+    }
+
+    toast.error(getRequestErrorMessage(error, 'មិនអាចបដិសេធ និងបញ្ជូនត្រឡប់ឯកសារបានទេ'))
   } finally {
     isSubmittingWorkflow.value = false
   }
@@ -490,14 +676,14 @@ const handleForward = async () => {
 
     const optimisticFlowState = forwardCurrentFlowStep(flowState.value, {
       actorName: currentActorName.value,
-      message: commentDraft.value,
+      message: commentDraft.value.trim(),
       action: normalizedSelectedFlowAction.value
     })
     flowState.value = saveStoredDocumentFlowState(documentFlowStorageKey.value, optimisticFlowState)
 
     await syncWithBackend(
       normalizedSelectedFlowAction.value === 'approve'
-        ? 'បានអនុម័ត និងបញ្ចប់លំហូរឯកសារ'
+        ? 'បានអនុម័ត និងបញ្ចប់លំហូរឯកសារជាស្ថាពរ'
         : normalizedSelectedFlowAction.value === 'diy'
         ? 'បានរក្សាទុកឯកសារសម្រាប់ដំណើរការដោយខ្លួនឯង'
         : canChooseFinalDecision.value
@@ -521,7 +707,9 @@ const handleForward = async () => {
           flowState.value = backendState
           commentDraft.value = ''
           emit('updated', refreshed)
-          toast.success(normalizedSelectedFlowAction.value === 'approve' ? 'បានអនុម័ត និងបញ្ចប់លំហូរឯកសារ' : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់')
+          toast.success(normalizedSelectedFlowAction.value === 'approve'
+            ? 'បានអនុម័ត និងបញ្ចប់លំហូរឯកសារជាស្ថាពរ'
+            : 'បានបញ្ជូនឯកសារទៅជំហានបន្ទាប់')
           return
         }
       }
@@ -579,21 +767,9 @@ const getStepActorName = (step) => {
   return step.actedBy || step.assigneeName || ''
 }
 
-const getVisibleStepComments = (step) => {
-  const comments = Array.isArray(step?.comments) ? step.comments : []
-  const actorName = normalizeActorIdentity(getStepActorName(step))
-
-  if (!actorName) {
-    return comments
-  }
-
-  const matchedComments = comments.filter((entry) => {
-    const commentActor = normalizeActorIdentity(entry?.actorName)
-    return !commentActor || commentActor === actorName
-  })
-
-  return matchedComments.length ? matchedComments : comments
-}
+const getVisibleStepComments = (step) => (
+  Array.isArray(step?.comments) ? step.comments : []
+)
 
 const circleClass = (status) => {
   if (status === 'completed') return 'dc_time_ic--completed'
@@ -749,6 +925,13 @@ const commentClass = (type) => {
   margin-bottom: 12px;
 }
 
+.dc_comment_hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .dc_recipient_badge {
   background: #eff6ff;
   color: #1d4ed8;
@@ -757,11 +940,9 @@ const commentClass = (type) => {
   font-size: 12px;
 }
 
-.dc_composer_actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 12px;
+.dc_composer_submit {
+  width: 100%;
+  margin-top: 14px;
 }
 
 .dc_flow_choice {
@@ -806,6 +987,21 @@ const commentClass = (type) => {
   background: #eff6ff;
 }
 
+.dc_flow_option--active.dc_flow_option--danger {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.dc_flow_option--active.dc_flow_option--secondary {
+  border-color: #64748b;
+  background: #f8fafc;
+}
+
+.dc_flow_option--active.dc_flow_option--primary {
+  border-color: var(--ocm-btn-bg, #2563eb);
+  background: #eff6ff;
+}
+
 .dc_permission_hint {
   margin-bottom: 12px;
   color: #b45309;
@@ -817,10 +1013,18 @@ const commentClass = (type) => {
 }
 
 .btn_dc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
   border: 0;
-  padding: 10px 16px;
-  font-size: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -838,5 +1042,10 @@ const commentClass = (type) => {
 .btn_dc--secondary {
   background: #e2e8f0;
   color: #0f172a;
+}
+
+.btn_dc--danger {
+  background: #dc2626;
+  color: #fff;
 }
 </style>

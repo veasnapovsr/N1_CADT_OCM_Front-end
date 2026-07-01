@@ -2896,6 +2896,11 @@ span.flatpickr-weekday.dark *,
   color: white;
 }
 
+.ocm_status.status-resent {
+  background-color: #8b5cf6;
+  color: white;
+}
+
 .ocm_status.status-comment {
   background-color: #3b82f6;
   color: white;
@@ -3052,6 +3057,13 @@ span.flatpickr-weekday.dark *,
   color: #4b5563;
 }
 
+.timeline_comment_list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .timeline_comment_box {
   background-color: var(--ocm-bg);
   border: 1px solid #d1d5db;
@@ -3114,6 +3126,7 @@ span.flatpickr-weekday.dark *,
 /* Use action classes for dot color */
 .timeline_dot.status-comment { background: #3b82f6; }
 .timeline_dot.status-reject { background: #ef4444; }
+.timeline_dot.status-resent { background: #8b5cf6; }
 .timeline_dot.status-approve { background: #10b981; }
 .timeline_dot.status-sent { background: #0ea5e9; }
 .timeline_dot.status-created { background: #3b82f6; }

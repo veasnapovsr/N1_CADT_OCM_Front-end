@@ -340,7 +340,9 @@
             >
               <div class="officer-vertical-card__content">
                 <div class="officer-card-brand">
-                  <div class="officer-card-brand__logo" :style="{ backgroundImage: `url('${ocmLogoUrl}')` }"></div>
+                  <div class="officer-card-brand__logo">
+                    <img :src="ocmLogoUrl" alt="Office of the Council of Ministers" class="officer-card-brand__logo-image" />
+                  </div>
                   <div class="officer-card-brand__title font-moul">ទីស្ដីការគណៈរដ្ឋមន្ត្រី</div>
                   <div class="officer-card-brand__subtitle">Office of the Council of Ministers</div>
                 </div>
@@ -400,7 +402,9 @@
 
                       <td colspan="2" class="horizontal-officer-card__info-cell">
                         <div class="horizontal-officer-card__brand">
-                          <div class="horizontal-officer-card__brand-logo" :style="{ backgroundImage: `url('${ocmLogoUrl}')` }"></div>
+                          <div class="horizontal-officer-card__brand-logo">
+                            <img :src="ocmLogoUrl" alt="Office of the Council of Ministers" class="horizontal-officer-card__brand-logo-image" />
+                          </div>
                           <div>
                             <div class="horizontal-officer-card__brand-title font-moul">ទីស្ដីការគណៈរដ្ឋមន្ត្រី</div>
                             <div class="horizontal-officer-card__brand-subtitle">Office of the Council of Ministers</div>
@@ -599,6 +603,48 @@ const ensureAuthenticated = () => {
   return false
 }
 
+const normalizeStorageAssetOrigin = (absoluteUrl) => {
+  try {
+    const parsed = new URL(absoluteUrl)
+    const api = new URL(apiBaseUrl)
+    const isLocalHost = (hostname) => hostname === 'localhost' || hostname === '127.0.0.1'
+
+    if (
+      isLocalHost(parsed.hostname) &&
+      isLocalHost(api.hostname) &&
+      parsed.port === api.port &&
+      parsed.origin !== api.origin
+    ) {
+      parsed.protocol = api.protocol
+      parsed.hostname = api.hostname
+      return parsed.toString()
+    }
+  } catch (error) {
+    return absoluteUrl
+  }
+
+  return absoluteUrl
+}
+
+const toSameOriginAssetUrl = (absoluteUrl) => {
+  if (!absoluteUrl || typeof window === 'undefined') {
+    return absoluteUrl
+  }
+
+  try {
+    const parsed = new URL(absoluteUrl, window.location.origin)
+    const isStoragePath = parsed.pathname.startsWith('/storage/') || parsed.pathname.startsWith('/uploads/')
+
+    if (!isStoragePath) {
+      return absoluteUrl
+    }
+
+    return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch (error) {
+    return absoluteUrl
+  }
+}
+
 const resolveImageUrl = (value) => {
   const source = typeof value === 'string' ? value.trim() : ''
 
@@ -606,16 +652,22 @@ const resolveImageUrl = (value) => {
     return ''
   }
 
-  if (
-    source.startsWith('http://') ||
-    source.startsWith('https://') ||
-    source.startsWith('data:') ||
-    source.startsWith('blob:')
-  ) {
+  if (source.startsWith('data:') || source.startsWith('blob:')) {
     return source
   }
 
+  if (source.startsWith('http://') || source.startsWith('https://')) {
+    return toSameOriginAssetUrl(normalizeStorageAssetOrigin(source))
+  }
+
   const normalizedPath = source.startsWith('/') ? source : `/${source}`
+
+  if (normalizedPath.startsWith('/storage/') || normalizedPath.startsWith('/uploads/')) {
+    return typeof window !== 'undefined'
+      ? `${window.location.origin}${normalizedPath}`
+      : `${apiBaseUrl}${normalizedPath}`
+  }
+
   return `${apiBaseUrl}${normalizedPath}`
 }
 
@@ -880,7 +932,17 @@ const deleteOfficial = async (id) => {
 }
 
 const openOfficerCard = (officer) => {
-  selectedOfficer.value = officer
+  selectedOfficer.value = {
+    ...officer,
+    image: resolveImageUrl(
+      officer?.image ||
+      officer?.image_url ||
+      officer?.photo ||
+      officer?.photo_url ||
+      officer?.avatar_url ||
+      ''
+    )
+  }
   cardOrientation.value = 'vertical'
   showOfficerCard.value = true
 }
@@ -891,9 +953,46 @@ const closeOfficerCard = () => {
   selectedOfficer.value = null
 }
 
+const getOfficerPublicIdentifier = (officer) => {
+  const identifier = officer?.public_key || officer?.id
+  return identifier ? String(identifier).trim() : ''
+}
+
+const getOfficerPublicReadEndpoint = (officer) => {
+  const identifier = getOfficerPublicIdentifier(officer)
+  if (!identifier) {
+    return ''
+  }
+
+  const authcenterBaseUrl = /\/api\/authcenter$/i.test(apiBaseUrl)
+    ? apiBaseUrl
+    : `${apiBaseUrl}/api/authcenter`
+
+  return `${authcenterBaseUrl}/officers/${encodeURIComponent(identifier)}/read`
+}
+
+const getOfficerCardPublicUrl = (officer) => {
+  const identifier = getOfficerPublicIdentifier(officer)
+  const endpoint = getOfficerPublicReadEndpoint(officer)
+
+  if (!identifier || !endpoint || typeof window === 'undefined') {
+    return ''
+  }
+
+  const publicUrl = new URL('/officer-card.html', window.location.origin)
+  publicUrl.searchParams.set('key', identifier)
+  publicUrl.searchParams.set('endpoint', endpoint)
+  return publicUrl.toString()
+}
+
 const getOfficerCardQrValue = (officer) => {
   if (!officer) {
     return ''
+  }
+
+  const publicUrl = getOfficerCardPublicUrl(officer)
+  if (publicUrl) {
+    return publicUrl
   }
 
   const briefInfo = [
@@ -961,9 +1060,22 @@ const getOfficerCardElement = () => {
   return document.getElementById('officerCardToPrint')
 }
 
+const sanitizeOfficerCardFileName = (value) => (
+  `${value || ''}`
+    .trim()
+    .replace(/[^a-zA-Z0-9-_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+)
+
 const getOfficerCardFileName = () => {
-  const officerCode = selectedOfficer.value?.code || `officer-card-${selectedOfficer.value?.id || 'export'}`
-  return `${officerCode}`.replace(/[^a-zA-Z0-9-_]+/g, '-')
+  const officer = selectedOfficer.value
+  const englishName = getOfficerCardEnglishName(officer)
+  const fallbackName = officer?.code || `officer-card-${officer?.id || 'export'}`
+  const preferredName = englishName && englishName !== '-' ? englishName : fallbackName
+  const sanitized = sanitizeOfficerCardFileName(preferredName)
+
+  return sanitized || sanitizeOfficerCardFileName(fallbackName) || 'officer-card'
 }
 
 const copyComputedStyles = (sourceElement, targetElement) => {
@@ -990,6 +1102,607 @@ const copyComputedStyles = (sourceElement, targetElement) => {
   }
 }
 
+const syncCanvasElements = (sourceRoot, targetRoot) => {
+  const sourceCanvases = sourceRoot.querySelectorAll('canvas')
+  const targetCanvases = targetRoot.querySelectorAll('canvas')
+
+  sourceCanvases.forEach((sourceCanvas, index) => {
+    const targetCanvas = targetCanvases[index]
+    if (!(sourceCanvas instanceof HTMLCanvasElement) || !(targetCanvas instanceof HTMLCanvasElement)) {
+      return
+    }
+
+    targetCanvas.width = sourceCanvas.width
+    targetCanvas.height = sourceCanvas.height
+
+    const context = targetCanvas.getContext('2d')
+    if (context) {
+      context.drawImage(sourceCanvas, 0, 0)
+    }
+  })
+}
+
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+  reader.onerror = () => reject(reader.error || new Error('Failed to read image blob'))
+  reader.readAsDataURL(blob)
+})
+
+const resolveAbsoluteAssetUrl = (src) => {
+  const source = typeof src === 'string' ? src.trim() : ''
+
+  if (!source) {
+    return ''
+  }
+
+  if (source.startsWith('data:') || source.startsWith('blob:')) {
+    return source
+  }
+
+  if (source.startsWith('http://') || source.startsWith('https://')) {
+    return toSameOriginAssetUrl(normalizeStorageAssetOrigin(source))
+  }
+
+  if (source.startsWith('/storage/') || source.startsWith('/uploads/')) {
+    return toSameOriginAssetUrl(`${apiBaseUrl}${source}`)
+  }
+
+  if (source.startsWith('/')) {
+    return `${window.location.origin}${source}`
+  }
+
+  return toSameOriginAssetUrl(`${apiBaseUrl}/${source}`)
+}
+
+const shouldUseAuthenticatedImageFetch = (absoluteUrl) => {
+  try {
+    const parsed = new URL(normalizeStorageAssetOrigin(absoluteUrl))
+    const apiOrigin = new URL(apiBaseUrl).origin
+    return parsed.origin === apiOrigin || absoluteUrl.includes('/storage/')
+  } catch (error) {
+    return absoluteUrl.includes('/storage/')
+  }
+}
+
+const loadImageAsDataUrl = async (src) => {
+  const absoluteUrl = resolveAbsoluteAssetUrl(src)
+
+  if (!absoluteUrl) {
+    return ''
+  }
+
+  if (absoluteUrl.startsWith('data:')) {
+    return absoluteUrl
+  }
+
+  const isSameOriginRequest = (() => {
+    try {
+      return new URL(absoluteUrl).origin === window.location.origin
+    } catch (error) {
+      return false
+    }
+  })()
+
+  if (isSameOriginRequest) {
+    try {
+      const response = await fetch(absoluteUrl, { credentials: 'include' })
+      if (response.ok) {
+        return await blobToDataUrl(await response.blob())
+      }
+    } catch (error) {
+      console.warn('Same-origin officer card image fetch failed', absoluteUrl, error)
+    }
+  }
+
+  if (shouldUseAuthenticatedImageFetch(absoluteUrl)) {
+    try {
+      const response = await axios.get(absoluteUrl, {
+        responseType: 'blob',
+        headers: getHeaders()
+      })
+      return await blobToDataUrl(response.data)
+    } catch (error) {
+      console.warn('Authenticated officer card image fetch failed', absoluteUrl, error)
+    }
+  }
+
+  return ''
+}
+
+const embedImageElement = async (image) => {
+  if (!(image instanceof HTMLImageElement)) {
+    return
+  }
+
+  const source = image.currentSrc || image.getAttribute('src') || image.src
+
+  if (!source || source.startsWith('data:')) {
+    return
+  }
+
+  const dataUrl = await loadImageAsDataUrl(source)
+  if (!dataUrl) {
+    return
+  }
+
+  image.src = dataUrl
+  image.removeAttribute('srcset')
+}
+
+const embedSnapshotImages = async (root) => {
+  const images = Array.from(root.querySelectorAll('img'))
+  await Promise.all(images.map((image) => embedImageElement(image)))
+}
+
+let cachedOcmLogoRasterDataUrl = ''
+
+const rasterizeImageSourceToPngDataUrl = (src, width = 0, height = 0) => new Promise((resolve) => {
+  const image = new Image()
+  image.crossOrigin = 'anonymous'
+  image.onload = () => {
+    const targetWidth = width > 0 ? width : (image.naturalWidth || 96)
+    const targetHeight = height > 0 ? height : (image.naturalHeight || 96)
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(targetWidth))
+    canvas.height = Math.max(1, Math.round(targetHeight))
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      resolve('')
+      return
+    }
+
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    resolve(canvas.toDataURL('image/png'))
+  }
+  image.onerror = () => resolve('')
+  image.src = src
+})
+
+const loadOcmLogoRasterDataUrl = async () => {
+  if (cachedOcmLogoRasterDataUrl) {
+    return cachedOcmLogoRasterDataUrl
+  }
+
+  const embedded = await loadImageAsDataUrl(ocmLogoUrl)
+  const source = embedded || resolveAbsoluteAssetUrl(ocmLogoUrl)
+
+  if (!source) {
+    return ''
+  }
+
+  const raster = await rasterizeImageSourceToPngDataUrl(source)
+  if (raster) {
+    cachedOcmLogoRasterDataUrl = raster
+  }
+
+  return raster
+}
+
+const ensureOfficerCardBrandLogos = async (root) => {
+  if (!root) {
+    return
+  }
+
+  const logoDataUrl = await loadOcmLogoRasterDataUrl()
+  if (!logoDataUrl) {
+    return
+  }
+
+  root.querySelectorAll('.officer-card-brand__logo-image, .horizontal-officer-card__brand-logo-image').forEach((image) => {
+    if (!(image instanceof HTMLImageElement)) {
+      return
+    }
+
+    image.src = logoDataUrl
+    image.removeAttribute('srcset')
+  })
+
+  const verticalCard = root.querySelector('.officer-vertical-card')
+  if (verticalCard instanceof HTMLElement) {
+    verticalCard.style.backgroundImage = `linear-gradient(rgba(255,255,255,0.94), rgba(255,255,255,0.94)), url("${logoDataUrl}")`
+    verticalCard.style.backgroundPosition = 'center'
+    verticalCard.style.backgroundRepeat = 'no-repeat'
+    verticalCard.style.backgroundSize = '38%'
+  }
+}
+
+const getLiveBrandLogoBounds = (exportImage) => {
+  const liveRoot = getOfficerCardElement()
+  if (!liveRoot || !(exportImage instanceof HTMLImageElement)) {
+    return null
+  }
+
+  const selector = exportImage.classList.contains('horizontal-officer-card__brand-logo-image')
+    ? '.horizontal-officer-card__brand-logo-image'
+    : '.officer-card-brand__logo-image'
+  const liveImage = liveRoot.querySelector(selector)
+
+  if (!(liveImage instanceof HTMLImageElement)) {
+    return null
+  }
+
+  const rect = liveImage.getBoundingClientRect()
+  const width = Math.round(rect.width)
+  const height = Math.round(rect.height)
+
+  if (width < 2 || height < 2) {
+    return null
+  }
+
+  return { width, height }
+}
+
+const getBrandLogoExportBounds = (logoImg) => {
+  const liveBounds = getLiveBrandLogoBounds(logoImg)
+  if (liveBounds) {
+    return liveBounds
+  }
+
+  if (logoImg.classList.contains('horizontal-officer-card__brand-logo-image')) {
+    return { width: 48, height: 48 }
+  }
+
+  const height = 46
+  const aspectRatio = logoImg.naturalWidth > 0 && logoImg.naturalHeight > 0
+    ? logoImg.naturalWidth / logoImg.naturalHeight
+    : 1
+
+  return {
+    width: Math.max(1, Math.round(height * aspectRatio)),
+    height
+  }
+}
+
+const rasterizeBrandLogoImageForCanvasExport = async (logoImg) => {
+  if (!(logoImg instanceof HTMLImageElement)) {
+    return
+  }
+
+  await waitForImageElement(logoImg)
+
+  if (!logoImg.naturalWidth || !logoImg.naturalHeight) {
+    return
+  }
+
+  const { width: boxW, height: boxH } = getBrandLogoExportBounds(logoImg)
+  const scale = Math.min(boxW / logoImg.naturalWidth, boxH / logoImg.naturalHeight)
+  const drawW = logoImg.naturalWidth * scale
+  const drawH = logoImg.naturalHeight * scale
+  const offsetX = (boxW - drawW) / 2
+  const offsetY = (boxH - drawH) / 2
+
+  const canvas = document.createElement('canvas')
+  canvas.width = boxW
+  canvas.height = boxH
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return
+  }
+
+  context.clearRect(0, 0, boxW, boxH)
+  context.drawImage(logoImg, offsetX, offsetY, drawW, drawH)
+
+  logoImg.src = canvas.toDataURL('image/png')
+  logoImg.removeAttribute('srcset')
+  logoImg.style.width = `${boxW}px`
+  logoImg.style.height = `${boxH}px`
+  logoImg.style.maxWidth = `${boxW}px`
+  logoImg.style.maxHeight = `${boxH}px`
+  logoImg.style.minWidth = `${boxW}px`
+  logoImg.style.minHeight = `${boxH}px`
+  logoImg.style.objectFit = 'fill'
+  logoImg.style.objectPosition = 'center center'
+  logoImg.style.display = 'block'
+  logoImg.style.flexShrink = '0'
+}
+
+const rasterizeBrandLogoImagesForCanvasExport = async (root) => {
+  const logos = Array.from(root.querySelectorAll('.officer-card-brand__logo-image, .horizontal-officer-card__brand-logo-image'))
+  await Promise.all(logos.map((logo) => rasterizeBrandLogoImageForCanvasExport(logo)))
+}
+
+const ensureOfficerCardAssets = async (root, officer) => {
+  if (!root || !officer) {
+    return
+  }
+
+  const photo = root.querySelector('.card-photo, .horizontal-officer-card__photo')
+  const photoSource = officer.image || officerCardFallbackImage(officer)
+
+  if (photo instanceof HTMLImageElement && photoSource) {
+    const photoDataUrl = await loadImageAsDataUrl(photoSource)
+    if (photoDataUrl) {
+      photo.src = photoDataUrl
+      photo.removeAttribute('srcset')
+    }
+  }
+
+  const stampDataUrl = await loadImageAsDataUrl('/stamp.png')
+  if (!stampDataUrl) {
+    return
+  }
+
+  root.querySelectorAll('.officer-card-stamp').forEach((stamp) => {
+    if (!(stamp instanceof HTMLImageElement) || stamp.src.startsWith('data:')) {
+      return
+    }
+
+    stamp.src = stampDataUrl
+    stamp.removeAttribute('srcset')
+  })
+}
+
+const waitForImageElement = (image) => new Promise((resolve) => {
+  if (!(image instanceof HTMLImageElement)) {
+    resolve()
+    return
+  }
+
+  if (image.complete && image.naturalWidth > 0) {
+    resolve()
+    return
+  }
+
+  image.addEventListener('load', resolve, { once: true })
+  image.addEventListener('error', resolve, { once: true })
+})
+
+const resolveObjectPositionOffsets = (objectPosition, boxW, boxH, drawW, drawH) => {
+  const tokens = `${objectPosition || '50% 50%'}`.trim().split(/\s+/)
+  const horizontalToken = tokens[0] || '50%'
+  const verticalToken = tokens.length > 1 ? tokens[1] : '50%'
+
+  const resolveAxisOffset = (token, boxSize, drawSize) => {
+    const normalized = token.trim().toLowerCase()
+
+    if (normalized === 'left' || normalized === 'top') {
+      return 0
+    }
+
+    if (normalized === 'right') {
+      return boxSize - drawSize
+    }
+
+    if (normalized === 'bottom') {
+      return boxSize - drawSize
+    }
+
+    if (normalized === 'center') {
+      return (boxSize - drawSize) / 2
+    }
+
+    if (normalized.endsWith('%')) {
+      const percent = Number.parseFloat(normalized)
+      if (Number.isFinite(percent)) {
+        return ((boxSize - drawSize) * percent) / 100
+      }
+    }
+
+    const pixels = Number.parseFloat(normalized)
+    if (Number.isFinite(pixels)) {
+      return pixels
+    }
+
+    return (boxSize - drawSize) / 2
+  }
+
+  return {
+    x: resolveAxisOffset(horizontalToken, boxW, drawW),
+    y: resolveAxisOffset(verticalToken, boxH, drawH)
+  }
+}
+
+const rasterizeOfficerCardStampForCanvasExport = async (stampImg) => {
+  if (!(stampImg instanceof HTMLImageElement)) {
+    return
+  }
+
+  await waitForImageElement(stampImg)
+
+  if (!stampImg.naturalWidth || !stampImg.naturalHeight) {
+    return
+  }
+
+  const computed = window.getComputedStyle(stampImg)
+  const rect = stampImg.getBoundingClientRect()
+  const boxW = Math.max(1, Math.round(rect.width))
+  const boxH = Math.max(1, Math.round(rect.height))
+
+  if (boxW < 2 || boxH < 2) {
+    return
+  }
+
+  const opacity = Number.parseFloat(computed.opacity)
+  const objectFit = computed.objectFit || 'contain'
+  const objectPosition = computed.objectPosition || '50% 50%'
+
+  let drawW = boxW
+  let drawH = boxH
+  let offsetX = 0
+  let offsetY = 0
+
+  if (objectFit === 'contain' || objectFit === 'scale-down') {
+    const scale = Math.min(boxW / stampImg.naturalWidth, boxH / stampImg.naturalHeight)
+    drawW = stampImg.naturalWidth * scale
+    drawH = stampImg.naturalHeight * scale
+    const offsets = resolveObjectPositionOffsets(objectPosition, boxW, boxH, drawW, drawH)
+    offsetX = offsets.x
+    offsetY = offsets.y
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = boxW
+  canvas.height = boxH
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return
+  }
+
+  context.clearRect(0, 0, boxW, boxH)
+  context.globalAlpha = Number.isFinite(opacity) ? opacity : 1
+  context.drawImage(stampImg, offsetX, offsetY, drawW, drawH)
+
+  stampImg.src = canvas.toDataURL('image/png')
+  stampImg.removeAttribute('srcset')
+  stampImg.style.width = `${boxW}px`
+  stampImg.style.height = `${boxH}px`
+  stampImg.style.maxWidth = `${boxW}px`
+  stampImg.style.maxHeight = `${boxH}px`
+  stampImg.style.minWidth = `${boxW}px`
+  stampImg.style.minHeight = `${boxH}px`
+  stampImg.style.objectFit = 'fill'
+  stampImg.style.objectPosition = 'center center'
+  stampImg.style.opacity = '1'
+
+  const wrap = stampImg.closest('.officer-card-stamp-wrap')
+  if (wrap instanceof HTMLElement) {
+    const wrapRect = wrap.getBoundingClientRect()
+    const wrapW = Math.max(1, Math.round(wrapRect.width))
+    const wrapH = Math.max(1, Math.round(wrapRect.height))
+
+    wrap.style.width = `${wrapW}px`
+    wrap.style.height = `${wrapH}px`
+    wrap.style.minWidth = `${wrapW}px`
+    wrap.style.minHeight = `${wrapH}px`
+    wrap.style.flex = '0 0 auto'
+    wrap.style.display = 'flex'
+    wrap.style.alignItems = 'flex-end'
+    wrap.style.justifyContent = 'flex-end'
+  }
+}
+
+const rasterizeOfficerCardStampsForCanvasExport = async (root) => {
+  const stamps = Array.from(root.querySelectorAll('.officer-card-stamp'))
+  await Promise.all(stamps.map((stamp) => rasterizeOfficerCardStampForCanvasExport(stamp)))
+}
+
+const embedSnapshotBackgroundImages = async (root) => {
+  const elements = [root, ...root.querySelectorAll('*')]
+
+  await Promise.all(elements.map(async (element) => {
+    if (!(element instanceof HTMLElement)) {
+      return
+    }
+
+    const backgroundImage = window.getComputedStyle(element).backgroundImage
+    if (!backgroundImage || backgroundImage === 'none') {
+      return
+    }
+
+    const matches = [...backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g)]
+    if (!matches.length) {
+      return
+    }
+
+    let nextBackground = backgroundImage
+
+    for (const match of matches) {
+      const dataUrl = await loadImageAsDataUrl(match[1])
+      if (dataUrl) {
+        nextBackground = nextBackground.replace(match[0], `url("${dataUrl}")`)
+      }
+    }
+
+    if (nextBackground !== backgroundImage) {
+      element.style.backgroundImage = nextBackground
+    }
+  }))
+}
+
+const prepareOfficerCardExportRoot = async (root, officer = null) => {
+  const exportOfficer = officer || selectedOfficer.value
+
+  await ensureOfficerCardAssets(root, exportOfficer)
+  await ensureOfficerCardBrandLogos(root)
+  await embedSnapshotImages(root)
+  await embedSnapshotBackgroundImages(root)
+  replaceCanvasElementsWithImages(root)
+  await waitForImages(root)
+  await waitForRenderFrame()
+}
+
+const buildOfficerCardExportShellHtml = (title = 'Officer Card') => `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${title}</title>
+      <style>
+        ${OFFICER_CARD_FONT_CSS}
+
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+        }
+
+        body {
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          padding: 16px;
+          box-sizing: border-box;
+        }
+
+        @page {
+          margin: 0;
+        }
+      </style>
+    </head>
+    <body></body>
+  </html>
+`
+
+const buildOfficerCardExportHtml = (cardOuterHtml, title = 'Officer Card') => {
+  const shellHtml = buildOfficerCardExportShellHtml(title)
+  return shellHtml.replace('</body>', `${cardOuterHtml}</body>`)
+}
+
+const replaceCanvasElementsWithImages = (root) => {
+  root.querySelectorAll('canvas').forEach((canvas) => {
+    if (!(canvas instanceof HTMLCanvasElement) || !canvas.width || !canvas.height) {
+      return
+    }
+
+    const image = document.createElement('img')
+    const bounds = canvas.getBoundingClientRect()
+    const computedStyle = window.getComputedStyle(canvas)
+
+    image.src = canvas.toDataURL('image/png')
+    image.alt = 'QR code'
+    image.className = canvas.className
+    image.setAttribute('style', canvas.getAttribute('style') || '')
+
+    if (bounds.width > 0) {
+      image.style.width = `${Math.ceil(bounds.width)}px`
+    } else if (computedStyle.width && computedStyle.width !== 'auto') {
+      image.style.width = computedStyle.width
+    }
+
+    if (bounds.height > 0) {
+      image.style.height = `${Math.ceil(bounds.height)}px`
+    } else if (computedStyle.height && computedStyle.height !== 'auto') {
+      image.style.height = computedStyle.height
+    }
+
+    image.style.display = computedStyle.display === 'inline' ? 'block' : computedStyle.display
+    image.style.boxSizing = computedStyle.boxSizing
+    image.style.padding = computedStyle.padding
+    image.style.border = computedStyle.border
+    image.style.borderRadius = computedStyle.borderRadius
+    image.style.background = computedStyle.background
+    image.style.imageRendering = 'pixelated'
+
+    canvas.replaceWith(image)
+  })
+}
+
 const cloneElementWithInlineStyles = (sourceElement) => {
   const clone = sourceElement.cloneNode(true)
   const sourceElements = [sourceElement, ...sourceElement.querySelectorAll('*')]
@@ -1004,6 +1717,8 @@ const cloneElementWithInlineStyles = (sourceElement) => {
 
     copyComputedStyles(element, clonedElement)
   })
+
+  syncCanvasElements(sourceElement, clone)
 
   const rect = sourceElement.getBoundingClientRect()
   clone.style.margin = '0'
@@ -1089,12 +1804,35 @@ const canvasHasVisibleContent = (canvas) => {
   return false
 }
 
+const waitForOfficerCardQrCode = async (element) => {
+  const maxAttempts = 24
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const canvas = element?.querySelector('.officer-card-qr-wrap canvas, canvas.officer-card-qr')
+    if (canvas instanceof HTMLCanvasElement && canvasHasVisibleContent(canvas)) {
+      return
+    }
+
+    await waitForRenderFrame()
+  }
+}
+
 const createOfficerCardSnapshot = async () => {
   await nextTick()
 
   const element = getOfficerCardElement()
   if (!element) {
     return null
+  }
+
+  await waitForOfficerCardQrCode(element)
+  await waitForImages(element)
+
+  if (selectedOfficer.value) {
+    await ensureOfficerCardAssets(element, selectedOfficer.value)
+    await ensureOfficerCardBrandLogos(element)
+    await embedSnapshotBackgroundImages(element)
+    await waitForImages(element)
   }
 
   const snapshotHost = document.createElement('div')
@@ -1140,41 +1878,10 @@ const printOfficerCard = async () => {
     return
   }
 
+  await prepareOfficerCardExportRoot(snapshot.clone, selectedOfficer.value)
+
   printWindow.document.open()
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>${getOfficerCardFileName()}</title>
-        <style>
-          ${OFFICER_CARD_FONT_CSS}
-
-          html, body {
-            margin: 0;
-            padding: 0;
-            background: #ffffff;
-          }
-
-          body {
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 16px;
-            box-sizing: border-box;
-          }
-
-          @page {
-            margin: 0;
-          }
-        </style>
-      </head>
-      <body>
-        ${snapshot.clone.outerHTML}
-      </body>
-    </html>
-  `)
+  printWindow.document.write(buildOfficerCardExportHtml(snapshot.clone.outerHTML, getOfficerCardFileName()))
   printWindow.document.close()
 
   await waitForImages(printWindow.document)
@@ -1194,39 +1901,55 @@ const printOfficerCard = async () => {
   }, 150)
 }
 
-const renderOfficerCardCanvas = async (element, snapshot) => {
+const getOfficerCardExportTarget = (root) => (
+  root.querySelector('#officerCardToPrint')
+  || root.querySelector('.officer-card-page')
+  || root
+)
+
+const assertEmbeddedExportImages = async (root) => {
+  const pendingImages = Array.from(root.querySelectorAll('img')).filter((image) => {
+    const source = image.currentSrc || image.getAttribute('src') || image.src || ''
+    return source && !source.startsWith('data:')
+  })
+
+  if (pendingImages.length) {
+    await embedSnapshotImages(root)
+    await waitForImages(root)
+  }
+}
+
+const renderOfficerCardCanvas = async (element, { width, height } = {}) => {
+  const scale = Math.max(window.devicePixelRatio || 1, 2)
   const baseOptions = {
-    scale: Math.max(window.devicePixelRatio || 1, 2),
+    scale,
     useCORS: true,
+    allowTaint: false,
     backgroundColor: '#ffffff',
     logging: false,
-    width: snapshot.width,
-    height: snapshot.height,
-    windowWidth: snapshot.width,
-    windowHeight: snapshot.height,
     removeContainer: true,
-    imageTimeout: 0
+    imageTimeout: 15000,
+    foreignObjectRendering: false,
+    scrollX: 0,
+    scrollY: 0
   }
+
+  const sizedOptions = width > 0 && height > 0
+    ? {
+      ...baseOptions,
+      width,
+      height,
+      windowWidth: width,
+      windowHeight: height
+    }
+    : baseOptions
 
   try {
-    const foreignObjectCanvas = await html2canvas(element, {
-      ...baseOptions,
-      foreignObjectRendering: true
-    })
-
-    if (canvasHasVisibleContent(foreignObjectCanvas)) {
-      return foreignObjectCanvas
-    }
-
-    console.warn('Foreign object rendering returned a blank officer card canvas; retrying with standard rendering')
+    return await html2canvas(element, sizedOptions)
   } catch (error) {
-    console.warn('Falling back to canvas text rendering for officer card export', error)
+    console.warn('Sized officer card canvas export failed, retrying without fixed dimensions', error)
+    return html2canvas(element, baseOptions)
   }
-
-  return html2canvas(element, {
-    ...baseOptions,
-    foreignObjectRendering: false
-  })
 }
 
 const downloadOfficerCard = async () => {
@@ -1237,15 +1960,61 @@ const downloadOfficerCard = async () => {
   }
 
   try {
-    const canvas = await renderOfficerCardCanvas(snapshot.clone, snapshot)
+    const cardRoot = getOfficerCardExportTarget(snapshot.clone)
+
+    Object.assign(snapshot.host.style, {
+      position: 'fixed',
+      left: '0',
+      top: '0',
+      opacity: '0.01',
+      zIndex: '2147483646',
+      pointerEvents: 'none',
+      background: '#ffffff',
+      padding: '16px',
+      margin: '0'
+    })
+
+    await waitForRenderFrame()
+    await prepareOfficerCardExportRoot(snapshot.clone, selectedOfficer.value)
+    await assertEmbeddedExportImages(snapshot.clone)
+
+    await waitForImages(snapshot.host)
+    await waitForRenderFrame()
+    await rasterizeOfficerCardStampsForCanvasExport(snapshot.clone)
+    await rasterizeBrandLogoImagesForCanvasExport(snapshot.clone)
+    await waitForImages(snapshot.host)
+    if (document.fonts?.ready) {
+      await document.fonts.ready
+    }
+    await waitForRenderFrame()
+    await waitForRenderFrame()
+
+    const rect = cardRoot.getBoundingClientRect()
+    const exportWidth = Math.max(Math.ceil(rect.width), 360)
+    const exportHeight = Math.max(Math.ceil(rect.height), 560)
+
+    const canvas = await renderOfficerCardCanvas(cardRoot, {
+      width: exportWidth,
+      height: exportHeight
+    })
+
+    if (!canvasHasVisibleContent(canvas)) {
+      throw new Error('Officer card export produced a blank image')
+    }
+
+    const scale = Math.max(window.devicePixelRatio || 1, 2)
+    const imageData = canvas.toDataURL('image/png')
+    const pdfWidth = Math.max(Math.ceil(canvas.width / scale), exportWidth)
+    const pdfHeight = Math.max(Math.ceil(canvas.height / scale), exportHeight)
 
     const pdf = new jsPDF({
       unit: 'px',
-      format: [snapshot.width, snapshot.height],
-      orientation: snapshot.width > snapshot.height ? 'landscape' : 'portrait'
+      format: [pdfWidth, pdfHeight],
+      orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+      compress: true
     })
 
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, snapshot.width, snapshot.height)
+    pdf.addImage(imageData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST')
     pdf.save(`${getOfficerCardFileName()}.pdf`)
   } catch (error) {
     console.error('Failed to export officer card PDF', error)
@@ -1660,9 +2429,17 @@ tbody tr:hover {
   width: 100%;
   height: 46px;
   margin: 0 auto 10px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.officer-card-brand__logo-image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 46px;
+  object-fit: contain;
 }
 
 .officer-card-brand__title {
@@ -1727,6 +2504,9 @@ tbody tr:hover {
 
 .officer-card-seal-row--vertical {
   margin-top: 8px;
+  width: 100%;
+  justify-content: space-between;
+  align-items: flex-end;
 }
 
 .officer-card-qr-wrap {
@@ -1738,8 +2518,10 @@ tbody tr:hover {
 
 .officer-card-qr {
   display: block;
-  width: 50%;
-  height: 50%;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   padding: 6px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -1760,9 +2542,11 @@ tbody tr:hover {
 }
 
 .officer-card-stamp-wrap--vertical {
-  width: 156px;
-  min-width: 156px;
-  height: 156px;
+  width: 208px;
+  min-width: 208px;
+  height: 208px;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 .officer-card-qr-wrap--horizontal {
@@ -1772,9 +2556,9 @@ tbody tr:hover {
 }
 
 .officer-card-stamp-wrap--horizontal {
-  width: 136px;
-  min-width: 136px;
-  height: 136px;
+  width: 188px;
+  min-width: 188px;
+  height: 188px;
 }
 
 .officer-card-stamp {
@@ -1786,6 +2570,7 @@ tbody tr:hover {
 
 .officer-card-stamp--vertical {
   opacity: 0.85;
+  object-position: right bottom;
 }
 
 .horizontal-officer-card {
@@ -1850,9 +2635,17 @@ tbody tr:hover {
 .horizontal-officer-card__brand-logo {
   width: 48px;
   height: 48px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.horizontal-officer-card__brand-logo-image {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 
 .horizontal-officer-card__brand-title {
@@ -1894,7 +2687,7 @@ tbody tr:hover {
 }
 
 .horizontal-officer-card__spacer-cell {
-  width: 136px;
+  width: 188px;
 }
 
 .officer-card-stamp--horizontal {

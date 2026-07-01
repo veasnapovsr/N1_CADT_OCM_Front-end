@@ -88,14 +88,19 @@ const actions = {
             search: params.search == undefined ? '' : params.search ,
             perPage: params.perPage == undefined ? 20 : params.perPage ,
             page: params.page == undefined ? 1 : params.page ,
-            status: params.status == undefined ? '' : params.status
+            status: params.status == undefined ? '' : params.status ,
+            history: params.history == undefined ? '' : params.history
           }).toString()
           : '' 
       )
     )
   },
   async read ({ state, commit, rootState },params) {
-    return await crud.read(import.meta.env.VITE_API_SERVER+"/"+state.model.module+"/"+params.id+"/read")
+    const query = params?.history
+      ? `?${new URLSearchParams({ history: String(params.history) }).toString()}`
+      : ''
+
+    return await crud.read(import.meta.env.VITE_API_SERVER+"/"+state.model.module+"/"+params.id+"/read" + query)
   },
   async create ({ state, commit, rootState },params) {
     return await crud.create(import.meta.env.VITE_API_SERVER+"/"+state.model.module+'/create',params)
@@ -140,6 +145,12 @@ const actions = {
     return await crud.create(
       import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/send',
       normalizeWorkflowAction(params, 'send')
+    )
+  },
+  async reject ({ state }, params) {
+    return await crud.create(
+      import.meta.env.VITE_API_SERVER + '/' + state.model.module + '/reject',
+      normalizeWorkflowAction(params, 'reject')
     )
   },
   async addBriefing ({ state }, params) {

@@ -110,7 +110,7 @@
 </div>
               <div class="timeline_user">
                 <span class="jl_tbl_img">
-                  <img :src="log.userAvatar || 'https://ui-avatars.com/api/?name=' + log.userName" :alt="log.userName" />
+                  <img :src="log.userAvatar" :alt="log.userName" />
                 </span>
                 <div class="jl_tbl_c">
                   <span class="tb_n1 bold fs-95">{{ log.userName }}</span>
@@ -143,11 +143,17 @@
     </div>
   </div>
 </div>
-              <div v-if="log.actionType === 'comment'" class="timeline_comment_box">
+              <div class="timeline_action_line">
                 {{ log.description }}
               </div>
-              <div v-else class="timeline_action_line">
-                {{ log.description }}
+              <div v-if="log.comments?.length" class="timeline_comment_list">
+                <div
+                  v-for="comment in log.comments"
+                  :key="comment.id"
+                  class="timeline_comment_box"
+                >
+                  {{ comment.message }}
+                </div>
               </div>
             </div>
           </div>
@@ -197,8 +203,11 @@ import DateSelect from '@/components/flow/DateSelect.vue'
 import { InputSelect } from '@/components/ui/inputselect'
 import {
   formatKhmerNumber,
-  formatDateKhmer
+  formatDateKhmer,
+  resolveWorkflowAvatarUrl,
+  getWorkflowAvatarFallback
 } from '@/lib/utils.js'
+import { getPreferredWorkflowStepId, getWorkflowForwardTargetStepId } from '@/lib/documentFlow'
 
 const store = useStore()
 const router = useRouter()
@@ -220,6 +229,7 @@ const actionTypeOptions = [
   { label: 'ទាំងអស់', value: '' },
   { label: 'មតិយោបល់', value: 'comment' },
   { label: 'មិនយល់ព្រម', value: 'reject' },
+  { label: 'បញ្ជូនឡើងវិញ', value: 'resent' },
   { label: 'ឯកសារបានអនុម័ត', value: 'approve' },
   { label: 'ឯកសារបញ្ជូន', value: 'sent' },
   { label: 'បង្កើតឯកសារ', value: 'created' }
@@ -235,6 +245,13 @@ const getWorkflowUserSubtitle = (user = {}) => {
     .join(' • ')
 }
 
+const getWorkflowUserAvatar = (user = {}) => {
+  const displayName = getWorkflowUserName(user)
+
+  return resolveWorkflowAvatarUrl(user)
+    || getWorkflowAvatarFallback(displayName)
+}
+
 const statusToActionType = (status) => {
   const normalizedStatus = String(status || '').trim().toLowerCase()
   if (!normalizedStatus || ['draft', 'progress'].includes(normalizedStatus)) return 'created'
@@ -248,6 +265,64 @@ const getReceiverNames = (receivers = []) => receivers
   .map((receiver) => getWorkflowUserName(receiver?.user || receiver))
   .filter(Boolean)
 
+const getReceiverWorkflowStepId = (transaction = {}, senderStepId = 0) => {
+  const receivers = Array.isArray(transaction?.receivers) ? transaction.receivers : []
+  if (!receivers.length) {
+    return 0
+  }
+
+  const normalizedSenderStepId = Number.parseInt(senderStepId, 10)
+    || getPreferredWorkflowStepId(transaction?.sender || {})
+
+  return getPreferredWorkflowStepId(receivers[0]?.user || receivers[0] || {}, {
+    senderStepId: normalizedSenderStepId
+  })
+}
+
+const isReturnTransaction = (transaction = {}) => {
+  const senderStepId = getPreferredWorkflowStepId(transaction?.sender || {})
+  const receiverStepId = getReceiverWorkflowStepId(transaction, senderStepId)
+  const forwardTargetStepId = getWorkflowForwardTargetStepId(senderStepId)
+
+  if (
+    forwardTargetStepId > 0
+    && receiverStepId > 0
+    && receiverStepId === forwardTargetStepId
+  ) {
+    return false
+  }
+
+  return senderStepId > 0
+    && receiverStepId > 0
+    && receiverStepId < senderStepId
+}
+
+const findPreviousTransaction = (transaction = {}, transactions = []) => {
+  const previousTransactionId = Number.parseInt(transaction?.previous_transaction_id, 10)
+  if (previousTransactionId <= 0) {
+    return null
+  }
+
+  return transactions.find((entry) => Number.parseInt(entry?.id, 10) === previousTransactionId) || null
+}
+
+const isResendAfterReturn = (transaction = {}, transactions = []) => {
+  const previousTransaction = findPreviousTransaction(transaction, transactions)
+  return previousTransaction != null && isReturnTransaction(previousTransaction)
+}
+
+const resolveTransactionActionType = (transaction = {}, transactions = []) => {
+  if (isReturnTransaction(transaction)) {
+    return 'reject'
+  }
+
+  if (isResendAfterReturn(transaction, transactions)) {
+    return 'resent'
+  }
+
+  return statusToActionType(transaction?.status)
+}
+
 const getTransactionDescription = (transaction, actionType) => {
   const receiverNames = getReceiverNames(transaction?.receivers || [])
   switch (actionType) {
@@ -257,58 +332,430 @@ const getTransactionDescription = (transaction, actionType) => {
       return receiverNames.length > 0
         ? `បានផ្ញើឯកសារទៅ ${receiverNames.join(', ')}`
         : 'បានផ្ញើឯកសារ'
+    case 'resent':
+      return receiverNames.length > 0
+        ? `បានបញ្ជូនឯកសារឡើងវិញទៅ ${receiverNames.join(', ')}`
+        : 'បានបញ្ជូនឯកសារឡើងវិញបន្ទាប់ពីត្រូវបានបដិសេធ'
     case 'approve':
       return 'បានអនុម័តឯកសារ'
     case 'reject':
-      return 'មិនយល់ព្រម'
+      return receiverNames.length > 0
+        ? `បានបដិសេធ និងបញ្ជូនត្រឡប់ទៅ ${receiverNames.join(', ')}`
+        : 'បានបដិសេធ និងបញ្ជូនត្រឡប់ទៅអ្នកបញ្ជូនមុន'
     default:
       return 'មតិយោបល់'
   }
 }
 
-const createTransactionLog = (record, transaction) => {
-  const actionType = statusToActionType(transaction?.status)
+const resolveDocumentId = (record, transaction) => {
+  return (
+    record?.document?.id
+    ?? transaction?.document_id
+    ?? record?.document_id
+    ?? null
+  )
+}
+
+const resolveTransactionId = (record, transaction) => {
+  return transaction?.id ?? record?.id ?? null
+}
+
+const signatureStatusToActionType = (status) => {
+  const normalizedStatus = String(status || '').trim().toLowerCase()
+  if (['rejected', 'reject', 'returned', 'return', 'send_back', 'declined'].includes(normalizedStatus)) {
+    return 'reject'
+  }
+  if (['approved', 'approve', 'finished', 'done', 'completed'].includes(normalizedStatus)) {
+    return 'approve'
+  }
+  if (['sent', 'forward', 'submitted'].includes(normalizedStatus)) {
+    return 'sent'
+  }
+  return 'comment'
+}
+
+const normalizeHistoryIdentity = (value = '') => String(value || '').trim().toLowerCase()
+
+const getHistoryTimestamp = (value) => {
+  const timestamp = new Date(value || 0).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const getTransactionTimestamp = (transaction = {}) => (
+  getHistoryTimestamp(
+    transaction?.sent_at
+    || transaction?.updated_at
+    || transaction?.created_at
+    || transaction?.date_in
+  )
+)
+
+const extractHistoryComments = (source = {}) => {
+  const rawComments = source?.comments
+    || source?.histories
+    || source?.history
+    || source?.notes
+    || source?.note
+    || source?.remark
+    || source?.comment
+
+  if (Array.isArray(rawComments)) {
+    return rawComments
+      .map((entry, index) => {
+        if (typeof entry === 'string') {
+          const message = entry.trim()
+          return message ? { id: `inline-comment-${index}`, message } : null
+        }
+
+        if (!entry || typeof entry !== 'object') {
+          return null
+        }
+
+        const message = String(
+          entry.message || entry.comment || entry.note || entry.remark || ''
+        ).trim()
+
+        if (!message) {
+          return null
+        }
+
+        return {
+          id: entry.id ? `inline-comment-${entry.id}` : `inline-comment-${index}`,
+          message,
+          createdAt: entry.created_at || entry.updated_at || entry.at || ''
+        }
+      })
+      .filter(Boolean)
+  }
+
+  if (typeof rawComments === 'string' && rawComments.trim()) {
+    return [{ id: 'inline-comment-0', message: rawComments.trim() }]
+  }
+
+  return []
+}
+
+const collectTransactionComments = (transaction = {}) => {
+  const comments = []
+  const seen = new Set()
+
+  const pushComment = (comment) => {
+    const message = String(comment?.message || '').trim()
+    if (!message) {
+      return
+    }
+
+    const signature = `${message}|${comment?.createdAt || ''}`
+    if (seen.has(signature)) {
+      return
+    }
+
+    seen.add(signature)
+    comments.push({
+      id: comment.id || `transaction-comment-${comments.length}`,
+      message,
+      createdAt: comment.createdAt || ''
+    })
+  }
+
+  extractHistoryComments(transaction?.sender).forEach(pushComment)
+  extractHistoryComments(transaction).forEach(pushComment)
+
+  const receivers = Array.isArray(transaction?.receivers) ? transaction.receivers : []
+  receivers.forEach((receiver) => {
+    extractHistoryComments(receiver?.user || receiver).forEach(pushComment)
+    extractHistoryComments(receiver).forEach(pushComment)
+  })
+
+  return comments
+}
+
+const getBriefingBrieferName = (briefing = {}) => {
+  const briefer = briefing?.briefer || {}
+  return [briefer.lastname, briefer.firstname].filter(Boolean).join(' ')
+    || briefer.email
+    || ''
+}
+
+const appendLogComment = (log, comment) => {
+  if (!log || !comment?.message) {
+    return
+  }
+
+  log.comments = Array.isArray(log.comments) ? log.comments : []
+
+  const alreadyExists = log.comments.some((entry) => (
+    entry.id === comment.id
+    || entry.message === comment.message
+  ))
+
+  if (!alreadyExists) {
+    log.comments.push(comment)
+  }
+}
+
+const findActionLogForBriefing = (briefing, actionLogs, transactions = []) => {
+  const message = String(briefing?.briefing || '').trim()
+  if (!message || !actionLogs.length) {
+    return null
+  }
+
+  const briefingTime = getHistoryTimestamp(briefing?.created_at || briefing?.updated_at)
+  const brieferName = getBriefingBrieferName(briefing)
+  const sortedTransactions = [...transactions].sort(
+    (left, right) => getTransactionTimestamp(left) - getTransactionTimestamp(right)
+  )
+
+  for (let index = 0; index < sortedTransactions.length; index += 1) {
+    const transaction = sortedTransactions[index]
+    const currentTimestamp = getTransactionTimestamp(transaction)
+    const nextTimestamp = index < sortedTransactions.length - 1
+      ? getTransactionTimestamp(sortedTransactions[index + 1])
+      : Number.POSITIVE_INFINITY
+
+    if (briefingTime >= currentTimestamp && briefingTime < nextTimestamp) {
+      const actionType = resolveTransactionActionType(transaction, transactions)
+      const matchedLog = actionLogs.find((log) => log.id === `transaction-${transaction?.id}-${actionType}`)
+
+      if (matchedLog) {
+        return matchedLog
+      }
+    }
+  }
+
+  const nearbyLogs = actionLogs
+    .filter((log) => Math.abs(getHistoryTimestamp(log.timestamp) - briefingTime) <= 5 * 60 * 1000)
+    .sort((left, right) => (
+      Math.abs(getHistoryTimestamp(left.timestamp) - briefingTime)
+      - Math.abs(getHistoryTimestamp(right.timestamp) - briefingTime)
+    ))
+
+  const sameActorLog = nearbyLogs.find((log) => (
+    normalizeHistoryIdentity(log.userName) === normalizeHistoryIdentity(brieferName)
+    || (briefing?.briefer?.email && String(log.userSubtitle || '').includes(briefing.briefer.email))
+  ))
+
+  if (sameActorLog) {
+    return sameActorLog
+  }
+
+  return nearbyLogs[0]
+    || actionLogs
+      .slice()
+      .sort((left, right) => (
+        Math.abs(getHistoryTimestamp(left.timestamp) - briefingTime)
+        - Math.abs(getHistoryTimestamp(right.timestamp) - briefingTime)
+      ))[0]
+    || null
+}
+
+const attachBriefingsToLogs = (logs, briefings = [], transactions = []) => {
+  const actionLogs = logs.filter((log) => log.actionType !== 'comment')
+
+  briefings.forEach((briefing) => {
+    const message = String(briefing?.briefing || '').trim()
+    if (!message) {
+      return
+    }
+
+    const targetLog = findActionLogForBriefing(briefing, actionLogs, transactions)
+    if (!targetLog) {
+      return
+    }
+
+    appendLogComment(targetLog, {
+      id: `briefing-${briefing?.id}`,
+      message,
+      createdAt: briefing?.created_at || briefing?.updated_at || ''
+    })
+  })
+}
+
+const consolidateCommentLogs = (logs = []) => {
+  const actionLogs = []
+  const commentOnlyLogs = []
+
+  logs.forEach((log) => {
+    if (log.actionType === 'comment') {
+      commentOnlyLogs.push(log)
+      return
+    }
+
+    actionLogs.push({
+      ...log,
+      comments: Array.isArray(log.comments) ? [...log.comments] : []
+    })
+  })
+
+  commentOnlyLogs.forEach((commentLog) => {
+    const message = String(commentLog.description || '').trim()
+    if (!message) {
+      return
+    }
+
+    const commentTime = getHistoryTimestamp(commentLog.timestamp)
+    const targetLog = actionLogs
+      .filter((log) => normalizeHistoryIdentity(log.userName) === normalizeHistoryIdentity(commentLog.userName))
+      .sort((left, right) => (
+        Math.abs(getHistoryTimestamp(left.timestamp) - commentTime)
+        - Math.abs(getHistoryTimestamp(right.timestamp) - commentTime)
+      ))[0]
+      || actionLogs
+        .slice()
+        .sort((left, right) => (
+          Math.abs(getHistoryTimestamp(left.timestamp) - commentTime)
+          - Math.abs(getHistoryTimestamp(right.timestamp) - commentTime)
+        ))[0]
+
+    if (!targetLog) {
+      return
+    }
+
+    appendLogComment(targetLog, {
+      id: commentLog.id,
+      message,
+      createdAt: commentLog.timestamp
+    })
+  })
+
+  return actionLogs
+}
+
+const createTransactionLog = (record, transaction, allTransactions = []) => {
+  const actionType = resolveTransactionActionType(transaction, allTransactions)
   const sender = transaction?.sender || record?.sender || {}
   const timestamp = transaction?.sent_at || transaction?.updated_at || transaction?.created_at || transaction?.date_in
   return {
-    id: `transaction-${transaction?.id}`,
+    id: `transaction-${transaction?.id}-${actionType}`,
     actionType,
-    documentId: transaction?.id || record?.id,
+    documentId: resolveDocumentId(record, transaction),
+    transactionId: resolveTransactionId(record, transaction),
     userName: getWorkflowUserName(sender),
     userSubtitle: getWorkflowUserSubtitle(sender),
-    userAvatar: sender?.avatar_url || null,
-    documentDescription: transaction?.subject || record?.subject || '',
+    userAvatar: getWorkflowUserAvatar(sender),
+    documentDescription: transaction?.subject || record?.subject || record?.document?.objective || '',
     documentReference: record?.document?.number || '',
     description: getTransactionDescription(transaction, actionType),
+    comments: collectTransactionComments(transaction),
     timestamp: timestamp ? String(timestamp) : new Date().toISOString()
   }
 }
 
-const createBriefingLog = (record, briefing) => {
-  const briefer = briefing?.briefer || {}
+const createSignatureLog = (record, signature, transactions = []) => {
+  const signer = signature?.signer || {}
+  const actionType = signatureStatusToActionType(signature?.status)
+  const timestamp = signature?.created_at || signature?.updated_at || new Date().toISOString()
+  const returnTransaction = transactions.find((transaction) => isReturnTransaction(transaction))
+  const receiverNames = returnTransaction ? getReceiverNames(returnTransaction?.receivers || []) : []
+
   return {
-    id: `briefing-${briefing?.id}`,
-    actionType: 'comment',
-    documentId: record?.id,
-    userName: [briefer.lastname, briefer.firstname].filter(Boolean).join(' ') || briefer.email || 'មិនបានបញ្ជាក់',
-    userSubtitle: briefer.email || '',
-    userAvatar: null,
-    documentDescription: record?.subject || '',
+    id: `signature-${signature?.id}`,
+    actionType,
+    documentId: resolveDocumentId(record, record),
+    transactionId: resolveTransactionId(record, record),
+    userName: getWorkflowUserName(signer),
+    userSubtitle: getWorkflowUserSubtitle(signer),
+    userAvatar: getWorkflowUserAvatar(signer),
+    documentDescription: record?.subject || record?.document?.objective || '',
     documentReference: record?.document?.number || '',
-    description: briefing?.briefing || '',
-    timestamp: briefing?.created_at || briefing?.updated_at || new Date().toISOString()
+    description: actionType === 'reject'
+      ? (receiverNames.length > 0
+        ? `បានបដិសេធ និងបញ្ជូនត្រឡប់ទៅ ${receiverNames.join(', ')}`
+        : 'បានបដិសេធ និងបញ្ជូនត្រឡប់ឯកសារ')
+      : actionType === 'approve'
+        ? 'បានអនុម័តឯកសារ'
+        : 'មតិយោបល់',
+    comments: [],
+    timestamp: String(timestamp)
   }
 }
 
-const mapRecordToLogs = (record) => {
-  const transactionLogs = Array.isArray(record?.transactions) && record.transactions.length > 0
-    ? record.transactions.map((transaction) => createTransactionLog(record, transaction))
-    : [createTransactionLog(record, record)]
-  const briefingLogs = Array.isArray(record?.document?.briefings)
-    ? record.document.briefings.map((briefing) => createBriefingLog(record, briefing))
-    : []
+const getHistoryLogDedupeKey = (entry = {}) => {
+  const entryId = String(entry?.id || '')
 
-  return [...transactionLogs, ...briefingLogs]
+  const transactionMatch = entryId.match(/^transaction-(\d+)-/)
+  if (transactionMatch) {
+    return `transaction:${transactionMatch[1]}`
+  }
+
+  const signatureMatch = entryId.match(/^signature-(\d+)/)
+  if (signatureMatch) {
+    return `signature:${signatureMatch[1]}`
+  }
+
+  const minuteBucket = String(entry?.timestamp || '').slice(0, 16)
+  return [
+    entry.actionType,
+    entry.userName,
+    minuteBucket,
+    entry.documentReference,
+    entry.description
+  ].join('|')
+}
+
+const dedupeHistoryLogs = (entries = []) => {
+  const seen = new Set()
+
+  return entries.filter((entry) => {
+    const key = getHistoryLogDedupeKey(entry)
+
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
+const resolveHistoryDocumentId = (record = {}) => (
+  record?.document?.id
+  || record?.document_id
+  || null
+)
+
+const selectCanonicalRecordsForHistory = (records = []) => {
+  const recordsByDocument = new Map()
+
+  records.forEach((record) => {
+    const documentId = resolveHistoryDocumentId(record)
+    if (!documentId) {
+      return
+    }
+
+    const key = String(documentId)
+    const existing = recordsByDocument.get(key)
+    const recordId = Number.parseInt(record?.id, 10) || 0
+    const existingId = Number.parseInt(existing?.id, 10) || 0
+
+    if (!existing || recordId > existingId) {
+      recordsByDocument.set(key, record)
+    }
+  })
+
+  return [...recordsByDocument.values()]
+}
+
+const mapRecordToLogs = (record) => {
+  const transactions = Array.isArray(record?.transactions) && record.transactions.length > 0
+    ? record.transactions
+    : [record]
+
+  const transactionLogs = transactions.map((transaction) => createTransactionLog(record, transaction, transactions))
+  const signatureLogs = Array.isArray(record?.document?.short_signatures)
+    ? record.document.short_signatures
+      .filter((signature) => {
+        const normalizedStatus = String(signature?.status || '').trim().toLowerCase()
+        return ['rejected', 'reject', 'approved', 'approve', 'finished'].includes(normalizedStatus)
+      })
+      .map((signature) => createSignatureLog(record, signature, transactions))
+    : []
+  const briefings = Array.isArray(record?.document?.briefings) ? record.document.briefings : []
+  const mergedLogs = dedupeHistoryLogs([...transactionLogs, ...signatureLogs])
+
+  attachBriefingsToLogs(mergedLogs, briefings, transactions)
+
+  return consolidateCommentLogs(mergedLogs)
 }
 
 const formatTimeKhmer = (value) => {
@@ -333,9 +780,13 @@ const buildSearchQuery = () => {
   return parts.join(' ')
 }
 
-/** Map filter actionType to backend status param */
+/** Map filter actionType to backend status param (only valid transaction statuses) */
 const actionTypeToStatus = (actionType) => {
-  const map = { created: 'draft', sent: 'sent', approve: 'approved', reject: 'rejected' }
+  const map = {
+    created: 'draft',
+    sent: 'pending',
+    approve: 'finished'
+  }
   return actionType ? (map[actionType] || '') : ''
 }
 
@@ -349,21 +800,26 @@ const fetchLogs = async () => {
       page: 1,
       perPage: 500,
       search: searchQuery,
-      status: statusParam
+      status: statusParam,
+      history: 1
     }
     const res = await store.dispatch('transaction/list', params)
     if (res.data && res.data.records) {
+      const canonicalRecords = selectCanonicalRecordsForHistory(res.data.records)
       const detailedRecords = await Promise.all(
-        res.data.records.map(async (record) => {
+        canonicalRecords.map(async (record) => {
           try {
-            const detailRes = await store.dispatch('transaction/read', { id: record.id })
+            const detailRes = await store.dispatch('transaction/read', {
+              id: record.id,
+              history: 1
+            })
             return detailRes?.data?.record || record
           } catch {
             return record
           }
         })
       )
-      const mapped = detailedRecords.flatMap(mapRecordToLogs)
+      const mapped = dedupeHistoryLogs(detailedRecords.flatMap(mapRecordToLogs))
       mapped.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       logs.value = mapped
     } else {
@@ -404,7 +860,11 @@ const filteredLogs = computed(() => {
 
   // Filter by action type
   if (filters.value.actionType) {
-    result = result.filter(log => log.actionType === filters.value.actionType)
+    if (filters.value.actionType === 'comment') {
+      result = result.filter((log) => Array.isArray(log.comments) && log.comments.length > 0)
+    } else {
+      result = result.filter((log) => log.actionType === filters.value.actionType)
+    }
   }
 
   // Filter by date (client-side)
@@ -433,10 +893,11 @@ const paginatedLogs = computed(() => {
 
 // Methods
 const goToDocumentDetail = (log) => {
-  if (!log.documentId) return
+  const routeId = log.transactionId || log.documentId
+  if (!routeId) return
   router.push({
     name: 'pdf-documents-detail',
-    params: { id: log.documentId }
+    params: { id: routeId }
   })
 }
 
@@ -444,6 +905,7 @@ const getActionLabel = (actionType) => {
   const labels = {
     comment: 'ផ្តល់មតិយោបល់',
     reject: 'មិនយល់ព្រម',
+    resent: 'បញ្ជូនឡើងវិញ',
     approve: 'បានអនុម័តឯកសារ',
     sent: 'បានបញ្ជូនឯកសារ',
     created: 'បានបង្កើតឯកសារ'
@@ -455,6 +917,7 @@ const getActionBadgeClass = (actionType) => {
   const classes = {
     comment: 'status-comment',
     reject: 'status-reject',
+    resent: 'status-resent',
     approve: 'status-approve',
     sent: 'status-sent',
     created: 'status-created'

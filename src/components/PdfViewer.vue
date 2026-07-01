@@ -1,12 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { PDFViewer } from '@embedpdf/vue-pdf-viewer'
+import { resolveStorageAssetUrl } from '@/lib/utils'
 
 const RAW_API_SERVER = import.meta.env.VITE_API_SERVER || ''
 const API_SERVER = /^https?:\/\//i.test(RAW_API_SERVER)
   ? RAW_API_SERVER.replace(/\/$/, '')
   : new URL(RAW_API_SERVER, import.meta.env.VITE_API_PROXY_TARGET || window.location.origin).toString().replace(/\/$/, '')
-const API_BASE_URL = API_SERVER.replace(/\/api\/authcenter$/i, '')
 
 /* =========================
    PROPS
@@ -23,38 +23,7 @@ const totalPages = ref(0)
 const pageInput = ref('1')
 const zoomLevel = ref(100)
 
-// PDF Viewer config
-const normalizedSrc = computed(() => {
-  const source = props.src?.trim()
-
-  if (!source || source.startsWith('blob:') || source.startsWith('data:')) {
-    return source
-  }
-
-  if (source.startsWith('http://') || source.startsWith('https://')) {
-    try {
-      const url = new URL(source)
-
-      if (url.origin === API_BASE_URL && url.pathname.startsWith('/storage/')) {
-        return `${url.pathname}${url.search}${url.hash}`
-      }
-
-      return source
-    } catch {
-      return source
-    }
-  }
-
-  if (source.startsWith('/storage/')) {
-    return source
-  }
-
-  if (source.startsWith('storage/')) {
-    return `/${source}`
-  }
-
-  return source
-})
+const normalizedSrc = computed(() => resolveStorageAssetUrl(props.src, API_SERVER))
 
 const pdfConfig = computed(() => ({
   src: normalizedSrc.value,

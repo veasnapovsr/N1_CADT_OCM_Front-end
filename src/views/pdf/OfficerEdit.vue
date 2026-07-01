@@ -164,6 +164,30 @@
                 </div>
               </label>
 
+              <label class="officer-field officer-field--wide">
+                <span class="officer-field-label">សិទ្ធិ (Roles) សម្រាប់គណនី</span>
+                <div v-if="workflowRoleOptions.length" class="officer-role-grid">
+                  <label v-for="role in workflowRoleOptions" :key="role.id" class="officer-role-item">
+                    <input
+                      type="radio"
+                      class="officer-role-checkbox"
+                      name="workflow-role"
+                      :value="String(role.id)"
+                      v-model="form.organization_structure_position_id"
+                      @change="syncOrganizationStructureSelection"
+                    />
+                    <span class="officer-role-name">{{ role.roleName }}</span>
+                    <span class="officer-role-tag">{{ role.positionName }}</span>
+                  </label>
+                </div>
+                <div v-else class="officer-field-help">
+                  មិនមាន Role សម្រាប់ Document Flow ត្រូវបានកំណត់។
+                </div>
+                <p class="officer-field-help">
+                  អាចជ្រើសបានតែ ៥ Role សម្រាប់ Document Flow ប៉ុណ្ណោះ។
+                </p>
+              </label>
+
             </div>
 
             <div class="officer-edit-actions">
@@ -240,6 +264,14 @@ const organizationStructurePositionOptions = ref([])
 const rankOptions = ref([])
 const imageInputRef = ref(null)
 
+const WORKFLOW_ROLE_RULES = [
+  { roleName: 'នាយកដ្ឋានរដ្ឋបាល', positionName: 'មន្ត្រី' },
+  { roleName: 'ប្រធាននាយកដ្ឋាន', positionName: 'ប្រធាននាយកដ្ឋាន' },
+  { roleName: 'នាយកខុទ្ទកាល័យ', positionName: 'នាយកខុទ្ទកាល័យ' },
+  { roleName: 'ខុទ្ទកាល័យឯកឧត្តមឧបនាយករដ្ឋមន្ត្រីប្រចាំការ', positionName: 'មន្ត្រី' },
+  { roleName: 'អង្គភាពជំនាញ', positionName: 'អនុប្រធានការិយាល័យ' },
+];
+
 const isEditMode = computed(() => Boolean(route.query.id))
 const pageTitle = computed(() => (isEditMode.value ? 'កែប្រែព័ត៌មានមន្ត្រី' : 'បន្ថែមព័ត៌មានមន្ត្រី'))
 const hasImage = computed(() => Boolean(form.image || form.image_path))
@@ -258,12 +290,39 @@ const availableOfficerOrganizations = computed(() => {
 
   return Array.from(new Set(organizationStructurePositionOptions.value.map((option) => option.organizationName).filter(Boolean)))
 })
-const organizationStructurePositionDisplayOptions = computed(() => {
-  return organizationStructurePositionOptions.value.map((option) => ({
-    ...option,
-    label: option.label || [option.organizationName, option.positionName].filter(Boolean).join(' / '),
+const workflowRoleOptions = computed(() => {
+  const normalizedRules = WORKFLOW_ROLE_RULES.map((rule) => ({
+    roleName: String(rule.roleName || '').trim(),
+    positionName: String(rule.positionName || '').trim(),
   }))
+
+  return organizationStructurePositionOptions.value
+    .filter((option) => {
+      const orgName = String(option.organizationName || '').trim()
+      const posName = String(option.positionName || '').trim()
+
+      return normalizedRules.some((rule) => {
+        const orgMatch =
+          orgName === rule.roleName
+          || orgName.includes(rule.roleName)
+          || rule.roleName.includes(orgName)
+
+        const posMatch =
+          posName === rule.positionName
+          || posName.includes(rule.positionName)
+          || rule.positionName.includes(posName)
+
+        return orgMatch && posMatch
+      })
+    })
+    .map((option) => ({
+      ...option,
+      roleName: option.organizationName,
+      label: [option.organizationName, option.positionName].filter(Boolean).join(' / '),
+    }))
 })
+
+const organizationStructurePositionDisplayOptions = computed(() => workflowRoleOptions.value)
 
 function assignForm(values) {
   Object.assign(form, createEmptyForm(), values)
@@ -900,6 +959,11 @@ function validateForm() {
     return 'តួនាទី និងអង្គភាពដែលបានជ្រើសមិនត្រូវគ្នានៅក្នុងបញ្ជីម៉ាស៊ីនមេទេ។ សូមជ្រើសរើសម្តងទៀត។'
   }
 
+  const selectedRole = workflowRoleOptions.value.find((option) => String(option.id) === String(form.organization_structure_position_id))
+  if (!selectedRole) {
+    return 'អនុញ្ញាតឱ្យជ្រើសបានតែ Role ៥ ប្រភេទសម្រាប់ Document Flow ប៉ុណ្ណោះ។'
+  }
+
   return ''
 }
 
@@ -1300,6 +1364,39 @@ watch(
   border-radius: 8px;
   background: var(--ocm-app-bg);
   overflow: hidden;
+}
+
+.officer-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.officer-role-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ocm-app-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ocm-app-bg) 92%, #f8fafc);
+}
+
+.officer-role-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+.officer-role-name {
+  font-weight: 700;
+  color: var(--ocm-color);
+}
+
+.officer-role-tag {
+  margin-left: auto;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ocm-color) 55%, transparent);
 }
 
 .officer-edit-alert,

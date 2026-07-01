@@ -342,11 +342,73 @@
       </div>
       </div>
     </div>
+
+    <div class="ocm_card_wr relative -top-5">
+      <div class="ocm_card_content">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-base h t-lspace h-10 text-blue-600">
+            ផ្លាស់ប្ដូរពាក្យសម្ងាត់
+          </h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-10 text-sm">
+          <div>
+            <p class="font-khmer font-bold mb-2">ពាក្យសម្ងាត់បច្ចុប្បន្ន</p>
+            <input
+              v-model="passwordForm.current"
+              type="password"
+              autocomplete="current-password"
+              class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                focus:border-blue-500 transition"
+              placeholder="បញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន"
+            />
+          </div>
+
+          <div>
+            <p class="font-khmer font-bold mb-2">ពាក្យសម្ងាត់ថ្មី</p>
+            <input
+              v-model="passwordForm.password"
+              type="password"
+              autocomplete="new-password"
+              class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                focus:border-blue-500 transition"
+              placeholder="បញ្ចូលពាក្យសម្ងាត់ថ្មី"
+            />
+          </div>
+
+          <div>
+            <p class="font-khmer font-bold mb-2">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី</p>
+            <input
+              v-model="passwordForm.password_confirmation"
+              type="password"
+              autocomplete="new-password"
+              class="border border-gray-300 rounded px-4 py-3 w-full text-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                focus:border-blue-500 transition"
+              placeholder="បញ្ចូលពាក្យសម្ងាត់ថ្មីម្តងទៀត"
+            />
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-6">
+          <button
+            type="button"
+            class="button ocm_btn_ac button-primary t-lspace"
+            :disabled="isChangingPassword"
+            @click="changePassword"
+          >
+            {{ isChangingPassword ? 'កំពុងផ្លាស់ប្ដូរ...' : 'ផ្លាស់ប្ដូរពាក្យសម្ងាត់' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   <Footer />
 </div>
 </section>
 </template>
-  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
 <script setup>
 
 import axios from 'axios'
@@ -420,9 +482,15 @@ const user = ref(createEmptyUser())
 const originalUser = ref(createEmptyUser())
 const isEditing = ref(false)
 const isSaving = ref(false)
+const isChangingPassword = ref(false)
 const isUploadingPhoto = ref(false)
 const photoInputRef = ref(null)
 const localPhotoPreviewUrl = ref('')
+const passwordForm = ref({
+  current: '',
+  password: '',
+  password_confirmation: ''
+})
 
 const resetLocalPhotoPreview = () => {
   if (localPhotoPreviewUrl.value?.startsWith('blob:')) {
@@ -887,6 +955,82 @@ const handleProfileAction = async () => {
   }
 
   await saveProfile()
+}
+
+const resetPasswordForm = () => {
+  passwordForm.value = {
+    current: '',
+    password: '',
+    password_confirmation: ''
+  }
+}
+
+const validatePasswordForm = () => {
+  if (!passwordForm.value.current?.trim()) {
+    return 'សូមបញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន។'
+  }
+
+  if (!passwordForm.value.password?.trim()) {
+    return 'សូមបញ្ចូលពាក្យសម្ងាត់ថ្មី។'
+  }
+
+  if (passwordForm.value.password.length < 6) {
+    return 'ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងឆាប់ ៦ តួអក្សរ។'
+  }
+
+  if (passwordForm.value.password !== passwordForm.value.password_confirmation) {
+    return 'ពាក្យសម្ងាត់ថ្មីមិនត្រូវគ្នា។'
+  }
+
+  if (passwordForm.value.current === passwordForm.value.password) {
+    return 'ពាក្យសម្ងាត់ថ្មីត្រូវខុសពីពាក្យសម្ងាត់បច្ចុប្បន្ន។'
+  }
+
+  return ''
+}
+
+const changePassword = async () => {
+  const validationMessage = validatePasswordForm()
+
+  if (validationMessage) {
+    toast.error('មិនអាចផ្លាស់ប្ដូរពាក្យសម្ងាត់បាន', {
+      description: validationMessage
+    })
+    return
+  }
+
+  if (!getAuthorization()) {
+    authLogout()
+    toast.error('សម័យចូលប្រព័ន្ធផុតកំណត់', {
+      description: 'សូមចូលប្រព័ន្ធម្ដងទៀត។'
+    })
+    return
+  }
+
+  isChangingPassword.value = true
+
+  try {
+    const response = await updateWithFallback([
+      `${API_SERVER}/users/authenticated/password`
+    ], {
+      current: passwordForm.value.current,
+      password: passwordForm.value.password,
+      password_confirmation: passwordForm.value.password_confirmation
+    }, [404])
+
+    if (response?.data?.ok === false) {
+      throw new Error(response?.data?.message || 'មានបញ្ហាក្នុងការផ្លាស់ប្ដូរពាក្យសម្ងាត់។')
+    }
+
+    resetPasswordForm()
+    toast.success(response?.data?.message || 'ផ្លាស់ប្ដូរពាក្យសម្ងាត់ថ្មីបានជោគជ័យ!')
+  } catch (error) {
+    toast.error('ផ្លាស់ប្ដូរពាក្យសម្ងាត់មិនបាន', {
+      description: extractApiErrorMessage(error, 'មានបញ្ហាក្នុងការផ្លាស់ប្ដូរពាក្យសម្ងាត់។')
+    })
+  } finally {
+    isChangingPassword.value = false
+  }
 }
 
 onMounted(() => {

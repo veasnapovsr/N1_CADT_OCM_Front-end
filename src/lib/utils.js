@@ -55,3 +55,81 @@ export const formatDateKhmer = (dateString) => {
 
     return `${day} ${month} ${year}`;
 };
+
+const normalizeWorkflowApiBaseUrl = (apiBaseUrl = '') => {
+    const rawApi = apiBaseUrl || import.meta.env.VITE_API_SERVER || import.meta.env.VITE_API_BASE_URL || '';
+    return String(rawApi).replace(/\/api\/authcenter$/i, '').replace(/\/$/, '');
+};
+
+/** Normalize storage paths/URLs for the Vite dev proxy (avoids APP_URL port mismatches). */
+export const resolveStorageAssetUrl = (value, apiBaseUrl = '') => {
+    const source = typeof value === 'string' ? value.trim() : '';
+
+    if (!source) {
+        return '';
+    }
+
+    if (source.startsWith('data:') || source.startsWith('blob:')) {
+        return source;
+    }
+
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+        try {
+            const url = new URL(source);
+
+            if (url.pathname.startsWith('/storage/')) {
+                return `${url.pathname}${url.search}${url.hash}`;
+            }
+
+            return source;
+        } catch {
+            return source;
+        }
+    }
+
+    if (source.startsWith('/storage/')) {
+        return source;
+    }
+
+    if (source.startsWith('storage/')) {
+        return `/${source}`;
+    }
+
+    if (source.startsWith('/')) {
+        const normalizedApi = normalizeWorkflowApiBaseUrl(apiBaseUrl);
+        return normalizedApi ? `${normalizedApi}${source}` : source;
+    }
+
+    return `/storage/${source.replace(/^storage\//, '')}`;
+};
+
+export const resolveWorkflowAvatarUrl = (user = {}, apiBaseUrl = '') => {
+    const source = typeof user?.avatar_url === 'string' ? user.avatar_url.trim() : '';
+
+    if (!source) {
+        return '';
+    }
+
+    if (
+        source.startsWith('http://')
+        || source.startsWith('https://')
+        || source.startsWith('data:')
+        || source.startsWith('blob:')
+    ) {
+        return source;
+    }
+
+    const normalizedApi = normalizeWorkflowApiBaseUrl(apiBaseUrl);
+
+    if (source.startsWith('/storage/') || source.startsWith('/uploads/') || source.startsWith('/')) {
+        return `${normalizedApi}${source}`;
+    }
+
+    return `${normalizedApi}/storage/${source.replace(/^storage\//, '')}`;
+};
+
+export const getWorkflowAvatarFallback = (name = '') => {
+    const label = String(name || '').trim() || 'User';
+
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(label)}&background=e5e7eb&color=111827`;
+};

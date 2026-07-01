@@ -5,7 +5,10 @@ export default {
     return await axios({
       method: 'post' ,
       url: url ,
-      data: params
+      data: params,
+      headers: {
+        Accept: 'application/json'
+      }
     })
   },
   async logout(url){

@@ -39,19 +39,19 @@
                     <input type="file" ref="fileInput" class="hidden" accept="application/pdf" @change="handleFileSelect" />
                     
                     <button 
-                      v-if="!comparePdfSrc" 
-                      @click="$refs.fileInput.click()" 
+                      @click="$refs.fileInput.click()"
+                      :disabled="isUploadingComparePdf"
                       class="button ocm_btn_ac button-primary"
                     >
                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                       </svg>
-                      បង្ហោះឯកសារថ្មី
+                      {{ isUploadingComparePdf ? 'កំពុងរក្សាទុក...' : 'បង្ហោះឯកសារថ្មី' }}
                     </button>
 
                     <button 
-                      v-else 
-                      @click="comparePdfSrc = null" 
+                      v-if="comparePdfSrc"
+                      @click="forceCompareAfterUpload = false; pdfSrc = latestPdfSrc; comparePdfSrc = null" 
                       class="button ocm_btn_ac"
                       style="background-color: #dc2626; color: white; border: none;"
                     >
@@ -108,12 +108,13 @@
     </div>
   </section>
 </template>
-  <Header title="រំហូរឯកសារទីស្តីការគណៈរដ្ឋមន្ត្រី" />
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRoute } from 'vue-router'
-import { formatKhmerNumber, formatDateKhmer } from '@/lib/utils'
+import { toast } from 'vue-sonner'
+import { formatKhmerNumber, formatDateKhmer, resolveStorageAssetUrl } from '@/lib/utils'
+import { FLOW_RETURN_REVIEW_STEP_ID, getStoredDocumentFlowState } from '@/lib/documentFlow'
 
 import Header from '@/components/Header.vue'
 import Aside from '@/components/Aside.vue'
@@ -124,62 +125,21 @@ const RAW_API_SERVER = import.meta.env.VITE_API_SERVER || ''
 const API_SERVER = /^https?:\/\//i.test(RAW_API_SERVER)
   ? RAW_API_SERVER.replace(/\/$/, '')
   : new URL(RAW_API_SERVER, import.meta.env.VITE_API_PROXY_TARGET || window.location.origin).toString().replace(/\/$/, '')
-const API_BASE_URL = API_SERVER.replace(/\/api\/authcenter$/i, '')
 
 const store = useStore()
 const route = useRoute()
 
 const pdfSrc = ref(null)
 const comparePdfSrc = ref(null)
+const latestPdfSrc = ref(null)
+const forceCompareAfterUpload = ref(false)
 const isDragging = ref(false)
+const isUploadingComparePdf = ref(false)
 const fileInput = ref(null)
 const documentTransaction = ref(null)
 const documentTransactionId = ref(Number(route.params.id) || 0)
 
-const resolveDocumentAssetUrl = (value) => {
-  const source = typeof value === 'string' ? value.trim() : ''
-
-  if (!source) {
-    return ''
-  }
-
-  if (
-    source.startsWith('http://') ||
-    source.startsWith('https://') ||
-    source.startsWith('data:') ||
-    source.startsWith('blob:')
-  ) {
-    if (source.startsWith('data:') || source.startsWith('blob:')) {
-      return source
-    }
-
-    try {
-      const url = new URL(source)
-
-      if (url.origin === API_BASE_URL && url.pathname.startsWith('/storage/')) {
-        return `${url.pathname}${url.search}${url.hash}`
-      }
-
-      return source
-    } catch {
-      return source
-    }
-  }
-
-  if (source.startsWith('/storage/')) {
-    return source
-  }
-
-  if (source.startsWith('storage/')) {
-    return `/${source}`
-  }
-
-  if (source.startsWith('/')) {
-    return `${API_BASE_URL}${source}`
-  }
-
-  return `/storage/${source.replace(/^storage\//, '')}`
-}
+const resolveDocumentAssetUrl = (value) => resolveStorageAssetUrl(value, API_SERVER)
 
 const wordFileUrl = computed(() => {
   const url = documentTransaction.value?.document?.word_file
@@ -228,24 +188,79 @@ const documentDateTime = computed(() => {
   return timeKh ? `${dateStr} ${timeKh}` : dateStr
 })
 
-// Process shared logic for file handling
-const processFile = (file) => {
-  if (file && file.type === 'application/pdf') {
-    comparePdfSrc.value = URL.createObjectURL(file)
-  } else {
-    alert("សូមជ្រើសរើសតែឯកសារ PDF ប៉ុណ្ណោះ")
+const uploadComparePdf = async (file) => {
+  if (!file || file.type !== 'application/pdf') {
+    toast.error('សូមជ្រើសរើសតែឯកសារ PDF ប៉ុណ្ណោះ')
+    return
+  }
+
+  const documentId = documentTransaction.value?.document?.id
+  if (!documentId || isUploadingComparePdf.value) {
+    return
+  }
+
+  isUploadingComparePdf.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    formData.append('document_id', String(documentId))
+    formData.append('transaction_id', String(documentTransactionId.value))
+
+    await store.dispatch('transaction/uploadPdf', formData)
+    forceCompareAfterUpload.value = true
+    toast.success('បានរក្សាទុកឯកសារថ្មីសម្រាប់ការប្រៀបធៀប')
+    await loadData()
+  } catch (error) {
+    console.error(error)
+    toast.error(error?.response?.data?.message || 'មិនអាចរក្សាទុកឯកសារថ្មីបានទេ')
+  } finally {
+    isUploadingComparePdf.value = false
+
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
   }
 }
 
-const handleDrop = (event) => {
+const handleDrop = async (event) => {
   isDragging.value = false
   const file = event.dataTransfer.files[0]
-  processFile(file)
+  await uploadComparePdf(file)
 }
 
-const handleFileSelect = (event) => {
+const handleFileSelect = async (event) => {
   const file = event.target.files[0]
-  processFile(file)
+  await uploadComparePdf(file)
+}
+
+const applyDocumentVersionView = (record) => {
+  const doc = record?.document
+  const pdfVersions = Array.isArray(doc?.pdf_versions) ? doc.pdf_versions : []
+  const currentVersion = pdfVersions.find((version) => version?.is_current) || null
+  const previousVersion = [...pdfVersions].reverse().find((version) => !version?.is_current) || null
+  const flowState = getStoredDocumentFlowState(documentTransactionId.value, record)
+  const shouldCompareVersions = forceCompareAfterUpload.value || Number(flowState?.activeStepId) === FLOW_RETURN_REVIEW_STEP_ID
+
+  documentTransaction.value = record || null
+
+  if (currentVersion?.url) {
+    latestPdfSrc.value = resolveDocumentAssetUrl(currentVersion.url)
+  } else if (doc?.pdf_file?.trim()) {
+    latestPdfSrc.value = resolveDocumentAssetUrl(doc.pdf_file)
+  } else {
+    latestPdfSrc.value = '/docs/report2.pdf'
+  }
+
+  if (shouldCompareVersions && previousVersion?.url && latestPdfSrc.value) {
+    pdfSrc.value = resolveDocumentAssetUrl(previousVersion.url)
+    comparePdfSrc.value = latestPdfSrc.value
+    return
+  }
+
+  forceCompareAfterUpload.value = false
+  pdfSrc.value = latestPdfSrc.value
+  comparePdfSrc.value = null
 }
 
 const loadData = async () => {
@@ -254,23 +269,18 @@ const loadData = async () => {
     const res = await store.dispatch('transaction/read', { id: documentTransactionId.value })
     const data = res?.data
     const record = data?.record ?? data
-    const doc = record?.document
-    documentTransaction.value = record || null
-
-    if (doc?.pdf_file?.trim()) {
-      pdfSrc.value = resolveDocumentAssetUrl(doc.pdf_file)
-    } else {
-      pdfSrc.value = '/docs/report2.pdf'
-    }
+    applyDocumentVersionView(record)
   } catch (err) {
     console.error(err)
+    latestPdfSrc.value = '/docs/report2.pdf'
     pdfSrc.value = '/docs/report2.pdf'
+    comparePdfSrc.value = null
   }
 }
 
 const handleTimelineUpdated = async (nextTransaction) => {
   if (nextTransaction && typeof nextTransaction === 'object') {
-    documentTransaction.value = nextTransaction
+    applyDocumentVersionView(nextTransaction)
     return
   }
 
@@ -291,6 +301,7 @@ onMounted(() => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;  
   overflow: hidden;
 }

@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Officer Identity</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@400;700&display=swap');
+
+      :root {
+        --page-bg: #f3f3f3;
+        --card-bg: #fbfbfd;
+        --card-edge: #dfe3ea;
+        --text-main: #2d3440;
+        --text-soft: #6d7685;
+        --brand-gold: #d49b21;
+        --shadow: 0 18px 40px rgba(37, 48, 67, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        font-family: "Hanuman", "Times New Roman", serif;
+        color: var(--text-main);
+        background:
+          radial-gradient(circle at top center, rgba(255, 255, 255, 0.9), transparent 38%),
+          linear-gradient(180deg, #f9f9fa, #eef1f4);
+      }
+
+      .status {
+        width: min(100%, 560px);
+        padding: 28px 24px;
+        border: 1px solid var(--card-edge);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: var(--shadow);
+        text-align: center;
+      }
+
+      .spinner {
+        width: 42px;
+        height: 42px;
+        margin: 0 auto 14px;
+        border-radius: 50%;
+        border: 4px solid rgba(212, 155, 33, 0.18);
+        border-top-color: var(--brand-gold);
+        animation: spin 0.9s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .profile-shell {
+        display: none;
+        width: min(100%, 980px);
+      }
+
+      .profile-shell.is-visible {
+        display: block;
+      }
+
+      .identity-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--card-edge);
+        border-radius: 18px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 249, 251, 0.98)),
+          url('/logo_main.svg') center/38% no-repeat;
+        box-shadow: var(--shadow);
+      }
+
+      .identity-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.96));
+        pointer-events: none;
+      }
+
+      .identity-card__inner {
+        position: relative;
+        z-index: 1;
+        min-height: 430px;
+        padding: 24px 34px 34px;
+      }
+
+      .identity-card__grid {
+        display: grid;
+        grid-template-columns: 230px minmax(0, 1fr);
+        gap: 28px;
+        align-items: start;
+      }
+
+      .identity-side {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 2px;
+      }
+
+      .identity-photo {
+        width: 112px;
+        height: 158px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #e8ebf0;
+        box-shadow: 0 8px 18px rgba(45, 52, 64, 0.1);
+      }
+
+      .identity-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .identity-code {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 400;
+      }
+
+      .identity-code strong {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .identity-main {
+        display: grid;
+        gap: 20px;
+      }
+
+      .identity-brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding-right: 98px;
+      }
+
+      .identity-brand__logo {
+        width: 54px;
+        height: 54px;
+        flex: 0 0 auto;
+        background: url('/logo_main.svg') center/contain no-repeat;
+      }
+
+      .identity-brand__title {
+        display: grid;
+        gap: 2px;
+      }
+
+      .identity-brand__kh {
+        color: var(--brand-gold);
+        font-size: clamp(18px, 2vw, 24px);
+        font-weight: 700;
+        line-height: 1.15;
+      }
+
+      .identity-brand__en {
+        color: #7181a2;
+        font-size: 13px;
+      }
+
+      .identity-info {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .identity-info td {
+        padding: 10px 0;
+        vertical-align: top;
+        font-size: 15px;
+      }
+
+      .identity-info td:first-child {
+        width: 170px;
+        color: var(--text-soft);
+        white-space: nowrap;
+        padding-right: 18px;
+      }
+
+      .identity-info td:nth-child(2) {
+        font-weight: 600;
+        padding-right: 18px;
+      }
+
+      .identity-info td:last-child {
+        width: 120px;
+        text-align: right;
+        color: var(--text-soft);
+        white-space: nowrap;
+      }
+
+      .identity-info__name {
+        font-size: 20px;
+        line-height: 1.25;
+      }
+
+      .identity-footer {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        align-items: end;
+        gap: 28px;
+        margin-top: 48px;
+      }
+
+      .identity-expire {
+        color: #5c6472;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .identity-stamp-wrap {
+        justify-self: center;
+        width: 156px;
+        height: 156px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: radial-gradient(circle at center, rgba(217, 73, 73, 0.08), rgba(255, 255, 255, 0.95) 70%);
+      }
+
+      .identity-stamp {
+        width: 156px;
+        height: 156px;
+        background: url('/stamp.png') center/contain no-repeat;
+        filter: drop-shadow(0 6px 10px rgba(217, 73, 73, 0.12));
+      }
+
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+      }
+
+      @media (max-width: 840px) {
+        .identity-card__inner {
+          padding: 22px 20px 26px;
+        }
+
+        .identity-card__grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .identity-side {
+          align-items: flex-start;
+        }
+
+        .identity-brand {
+          justify-content: flex-start;
+          padding-right: 0;
+        }
+
+        .identity-footer {
+          grid-template-columns: 1fr;
+          justify-items: start;
+          margin-top: 28px;
+        }
+
+        .identity-stamp-wrap,
+        .identity-stamp {
+          justify-self: start;
+        }
+      }
+
+      @media (max-width: 560px) {
+        body {
+          padding: 12px;
+        }
+
+        .identity-card {
+          border-radius: 16px;
+        }
+
+        .identity-photo {
+          width: 104px;
+          height: 146px;
+        }
+
+        .identity-info td {
+          display: block;
+          width: 100%;
+          padding: 4px 0;
+          text-align: left;
+        }
+
+        .identity-info tr {
+          display: block;
+          padding: 8px 0 10px;
+        }
+
+        .identity-info td:last-child {
+          text-align: left;
+        }
+
+        .identity-info__name {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section id="status" class="status">
+      <div class="spinner" aria-hidden="true"></div>
+      <h2 id="status-title">Loading officer profile</h2>
+      <p id="status-message">Please wait while the officer identity information is being loaded.</p>
+    </section>
+
+    <main id="profile" class="profile-shell">
+      <article class="identity-card" aria-label="Officer identity card">
+        <div class="identity-card__inner">
+          <div class="identity-card__grid">
+            <aside class="identity-side">
+              <div class="identity-photo">
+                <img id="officer-photo" alt="Officer photo" />
+              </div>
+              <div class="identity-code">លេខ <strong id="officer-code">-</strong></div>
+            </aside>
+
+            <section class="identity-main">
+              <header class="identity-brand">
+                <div class="identity-brand__logo" aria-hidden="true"></div>
+                <div class="identity-brand__title">
+                  <div class="identity-brand__kh">ទីស្តីការគណៈរដ្ឋមន្ត្រី</div>
+                  <div class="identity-brand__en">Office of the Council of Ministers</div>
+                </div>
+              </header>
+
+              <table class="identity-info" aria-describedby="identity-layout-caption">
+                <caption id="identity-layout-caption" class="visually-hidden">Officer identity information</caption>
+                <tbody>
+                  <tr>
+                    <td>គោត្តនាម-នាម :</td>
+                    <td class="identity-info__name" id="detail-kh-name">-</td>
+                    <td id="detail-en-name">-</td>
+                  </tr>
+                  <tr>
+                    <td>ថ្ងៃខែឆ្នាំកំណើត :</td>
+                    <td id="detail-dob">-</td>
+                    <td id="officer-gender">-</td>
+                  </tr>
+                  <tr>
+                    <td>អាសយដ្ឋាន :</td>
+                    <td colspan="2" id="detail-address">-</td>
+                  </tr>
+                  <tr>
+                    <td>អង្គភាព :</td>
+                    <td colspan="2" id="detail-organization">-</td>
+                  </tr>
+                  <tr>
+                    <td>មុខងារ :</td>
+                    <td colspan="2" id="detail-position">-</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <footer class="identity-footer">
+                <div class="identity-expire">
+                  បណ្ណសម្គាល់ខ្លួននេះបង្ហាញព័ត៌មាន<br />
+                  ថ្ងៃទី<span id="officer-official-date">-</span>
+                </div>
+
+                <div class="identity-stamp-wrap" aria-hidden="true">
+                  <div class="identity-stamp"></div>
+                </div>
+              </footer>
+            </section>
+          </div>
+        </div>
+      </article>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(window.location.search)
+      const officerKey = (params.get('key') || '').trim()
+      const endpointParam = (params.get('endpoint') || '').trim()
+
+      const statusElement = document.getElementById('status')
+      const profileElement = document.getElementById('profile')
+      const statusTitleElement = document.getElementById('status-title')
+      const statusMessageElement = document.getElementById('status-message')
+
+      const fallbackPhoto = '/male.jpeg'
+
+      const setStatus = (title, message) => {
+        statusTitleElement.textContent = title
+        statusMessageElement.textContent = message
+        statusElement.style.display = 'block'
+        profileElement.classList.remove('is-visible')
+      }
+
+      const showProfile = () => {
+        statusElement.style.display = 'none'
+        profileElement.classList.add('is-visible')
+      }
+
+      const normalizeText = (value, fallback = '-') => {
+        if (value === null || value === undefined) {
+          return fallback
+        }
+
+        const normalized = String(value).replace(/\s+/g, ' ').trim()
+        return normalized || fallback
+      }
+
+      const formatGender = (value) => {
+        if (value === 1 || value === '1' || value === 'male' || value === 'Male') return 'ភេទ : ប្រុស'
+        if (value === 2 || value === '2' || value === 'female' || value === 'Female') return 'ភេទ : ស្រី'
+        return `ភេទ : ${normalizeText(value)}`
+      }
+
+      const getCurrentPosition = (officer) => {
+        return normalizeText(
+          officer?.current_job?.organization_structure_position?.position?.name ||
+          officer?.current_job?.organizationStructurePosition?.position?.name ||
+          officer?.jobs?.[0]?.organization_structure_position?.position?.name ||
+          officer?.jobs?.[0]?.organizationStructurePosition?.position?.name ||
+          officer?.position?.name ||
+          officer?.job_title
+        )
+      }
+
+      const getCurrentOrganization = (officer) => {
+        return normalizeText(
+          officer?.current_job?.organization_structure_position?.organization_structure?.organization?.name ||
+          officer?.current_job?.organizationStructurePosition?.organizationStructure?.organization?.name ||
+          officer?.jobs?.[0]?.organization_structure_position?.organization_structure?.organization?.name ||
+          officer?.jobs?.[0]?.organizationStructurePosition?.organizationStructure?.organization?.name ||
+          officer?.organization?.name
+        )
+      }
+
+      const getOfficerImage = (officer, apiOrigin) => {
+        const candidates = [
+          officer?.image,
+          officer?.image_url,
+          officer?.photo,
+          officer?.photo_url,
+          officer?.user?.avatar_url,
+          officer?.people?.image
+        ]
+
+        for (const candidate of candidates) {
+          const value = normalizeText(candidate, '')
+          if (!value) continue
+
+          if (/^(https?:|data:|blob:)/i.test(value)) {
+            return value
+          }
+
+          const normalizedPath = value.startsWith('/') ? value : `/${value}`
+          return `${apiOrigin}${normalizedPath}`
+        }
+
+        return fallbackPhoto
+      }
+
+      const setText = (id, value, fallback = '-') => {
+        document.getElementById(id).textContent = normalizeText(value, fallback)
+      }
+
+      const renderOfficer = (officer, apiOrigin) => {
+        const people = officer?.people || {}
+        const khName = normalizeText([people.lastname, people.firstname].filter(Boolean).join(' '), '')
+        const enName = normalizeText([people.enlastname, people.enfirstname].filter(Boolean).join(' '), '')
+        const fullName = khName || enName || normalizeText(officer?.name)
+        const currentOrganization = getCurrentOrganization(officer)
+        const currentPosition = getCurrentPosition(officer)
+
+        setText('officer-code', officer?.code || officer?.id)
+        setText('detail-kh-name', khName || fullName)
+        setText('detail-en-name', enName, '')
+        setText('detail-dob', people?.dob)
+        setText('officer-gender', formatGender(people.gender || officer?.gender))
+        setText('detail-address', people?.address || people?.pob)
+        setText('detail-organization', currentOrganization)
+        setText('detail-position', currentPosition)
+        setText('officer-official-date', officer?.official_date)
+
+        const photoElement = document.getElementById('officer-photo')
+        photoElement.src = getOfficerImage(officer, apiOrigin)
+        photoElement.onerror = () => {
+          photoElement.onerror = null
+          photoElement.src = fallbackPhoto
+        }
+      }
+
+      const loadOfficer = async () => {
+        if (!officerKey || !endpointParam) {
+          setStatus('Invalid QR code', 'The officer card link is missing the required information.')
+          return
+        }
+
+        let endpoint
+        try {
+          endpoint = new URL(endpointParam)
+        } catch (error) {
+          setStatus('Invalid QR code', 'The officer lookup address is not valid.')
+          return
+        }
+
+        try {
+          const response = await fetch(endpoint.toString(), {
+            headers: {
+              Accept: 'application/json'
+            }
+          })
+
+          const payload = await response.json().catch(() => ({}))
+
+          if (!response.ok || payload?.ok === false || !payload?.record) {
+            throw new Error(payload?.message || 'Officer information could not be loaded.')
+          }
+
+          renderOfficer(payload.record, endpoint.origin)
+          showProfile()
+        } catch (error) {
+          setStatus('Officer not found', error.message || 'The officer information could not be loaded.')
+        }
+      }
+
+      loadOfficer()
+    </script>
+  </body>
+</html>

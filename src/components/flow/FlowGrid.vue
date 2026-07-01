@@ -1,5 +1,11 @@
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  canDeleteWorkflowDocument,
+  isWorkflowDocumentDeleteDisabled
+} from '@/lib/documentFlow'
+import { getUser, isAdmin } from '@/plugins/authentication'
 
 const props = defineProps({
   documents: {
@@ -14,6 +20,19 @@ const props = defineProps({
 
 const emit = defineEmits(['delete'])
 const router = useRouter()
+const currentUser = computed(() => getUser() || {})
+const userIsAdmin = computed(() => isAdmin())
+
+const canDeleteDoc = (doc) => (
+  canDeleteWorkflowDocument(currentUser.value, doc, { isAdmin: userIsAdmin.value })
+)
+
+const isDeleteDisabled = (doc) => (
+  isWorkflowDocumentDeleteDisabled(doc, currentUser.value, {
+    isAdmin: userIsAdmin.value,
+    deleting: props.deletingId === doc.id
+  })
+)
 
 /* ================= ACTIONS ================= */
 const goToDetail = (doc) => {
@@ -31,7 +50,7 @@ const goToEdit = (doc) => {
 }
 
 const deleteDoc = (doc) => {
-  if (doc?.status === 'approved') return
+  if (!canDeleteDoc(doc) || isDeleteDisabled(doc)) return
   emit('delete', doc)
 }
 
@@ -161,9 +180,10 @@ const statusClass = (s) => ({
 
 
 <button
+  v-if="canDeleteDoc(doc)"
   class="row_ac_in ocm-tooltip ocm-rmac d-flex w-full px-3 py-2 gap-2 items-center hover:bg-red-50 text-red-600"
-  :class="{ 'opacity-50 pointer-events-none': doc.status === 'approved' || deletingId === doc.id }"
-  :disabled="deletingId === doc.id"
+  :class="{ 'opacity-50 pointer-events-none': isDeleteDisabled(doc) }"
+  :disabled="isDeleteDisabled(doc)"
   @click.stop="deleteDoc(doc)"
 >
   <svg
