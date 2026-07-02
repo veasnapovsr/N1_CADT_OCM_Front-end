@@ -210,14 +210,14 @@ const removeFile = (index) => {
 
 const uploadFiles = async (record) => {
   if (isUploading.value || !record?.document_id) {
-    return
+    return false
   }
 
   const pdfFile = files.value.find(isPdf)
   const wordFile = files.value.find(isWord)
 
   if (!pdfFile && !wordFile) {
-    return
+    return false
   }
 
   isUploading.value = true
@@ -276,6 +276,8 @@ const uploadFiles = async (record) => {
       files.value = []
       previewImages.value = []
     }
+
+    return pdfOk || wordOk
   } finally {
     isUploading.value = false
   }
@@ -296,6 +298,11 @@ const submitForm = async () => {
     return
   }
 
+  if (!files.value.some((file) => isPdf(file) || isWord(file))) {
+    toast.error('សូមភ្ជាប់ឯកសារ PDF ឬ Word មុនពេលបញ្ជូន')
+    return
+  }
+
   isSubmitting.value = true
 
   try {
@@ -312,7 +319,21 @@ const submitForm = async () => {
 
     toast.success('រក្សារទុកព័ត៌មានប្រតិបត្តិការឯកសាររួចរាល់')
 
-    await uploadFiles(res.data.record)
+    const uploaded = await uploadFiles(res.data.record)
+    if (!uploaded) {
+      throw new Error('មិនអាចភ្ជាប់ឯកសារយោងបានទេ')
+    }
+
+    const transactionId = res.data.record?.id
+    await store.dispatch('transaction/send', {
+      id: transactionId,
+      transaction_id: transactionId,
+      document_transaction_id: transactionId,
+      flow_action: 'send',
+      action: 'send'
+    })
+
+    toast.success('បានបញ្ជូនឯកសារទៅតាមលំហូរការងាររួចរាល់')
 
     form.objective = ''
     form.number = ''

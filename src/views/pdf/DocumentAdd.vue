@@ -184,6 +184,10 @@ export default {
       errors.value.documentType = true
     }
 
+    if (!files.value.some((file) => isPdf(file) || isWord(file))) {
+      errors.value.files = true
+    }
+
     return Object.keys(errors.value).length === 0
   }
 
@@ -197,7 +201,9 @@ export default {
     if (!validateForm()) {
       notify.error({
         title: 'ព័ត៌មានមិនគ្រប់គ្រាន់',
-        description: 'សូមបំពេញព័ត៌មានដែលបានគូសពណ៌ក្រហម',
+        description: errors.value.files
+          ? 'សូមភ្ជាប់ឯកសារ PDF ឬ Word មុនពេលបញ្ជូន'
+          : 'សូមបំពេញព័ត៌មានដែលបានគូសពណ៌ក្រហម',
         duration: 2000
       })
       return
@@ -211,19 +217,31 @@ export default {
         date_in: form.startDate,
         number: form.number,
         objective: form.objective,
-        document_type: form.documentType
+        document_type: form.documentType?.value ?? form.documentType
       })
 
       if (res?.data?.ok) {
+        const uploaded = await uploadFiles(res.data.record)
+        if (!uploaded) {
+          throw new Error('មិនអាចភ្ជាប់ឯកសារយោងបានទេ')
+        }
+
+        const transactionId = res.data.record?.id
+        await store.dispatch('transaction/send', {
+          id: transactionId,
+          transaction_id: transactionId,
+          document_transaction_id: transactionId,
+          flow_action: 'send',
+          action: 'send'
+        })
+
         submitted.value = true
 
         notify.success({
           title: 'ព័ត៌មានប្រតិបត្តិការឯកសារ',
-          content: 'រក្សារទុកព័ត៌មានប្រតិបត្តិការឯកសាររួចរាល់។',
-          duration: 2000
+          content: 'បានបញ្ជូនឯកសារទៅតាមលំហូរការងាររួចរាល់។',
+          duration: 2500
         })
-
-        await uploadFiles(res.data.record)
       }
     } catch (err) {
       submitted.value = false
@@ -317,7 +335,7 @@ export default {
 
   async function uploadFiles (record) {
     if (isUploading.value) {
-      return
+      return false
     }
 
     if (!record || !record.document_id) {
@@ -326,14 +344,14 @@ export default {
         description: 'មិនមាន document_id',
         duration: 3000
       })
-      return
+      return false
     }
 
     const pdfFile = files.value.find(isPdf)
     const wordFile = files.value.find(isWord)
 
     if (!pdfFile && !wordFile) {
-      return 
+      return false
     }
 
     isUploading.value = true
@@ -415,6 +433,7 @@ export default {
       })
       files.value = []
     }
+    return pdfOk || wordOk
     } finally {
       isUploading.value = false
     }

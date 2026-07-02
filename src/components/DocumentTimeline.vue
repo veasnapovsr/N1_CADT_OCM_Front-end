@@ -516,7 +516,9 @@ const persistWorkflowComment = async () => {
     document_id: documentId,
     document_transaction_id: transactionId,
     transaction_id: transactionId,
-    briefing: trimmedComment
+    briefing: trimmedComment,
+    comment: trimmedComment,
+    note: trimmedComment
   })
 }
 
@@ -620,10 +622,6 @@ const handleReject = async () => {
     workflowPayload.action = 'reject'
 
     clearStoredDocumentFlowState(documentFlowStorageKey.value)
-
-    if (commentDraft.value.trim()) {
-      await persistWorkflowComment()
-    }
 
     await store.dispatch('transaction/reject', workflowPayload)
 

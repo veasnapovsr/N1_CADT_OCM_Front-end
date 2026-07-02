@@ -1588,11 +1588,10 @@ export const getStoredDocumentFlowState = (documentId, transaction = null) => {
         const preferStoredState = shouldPreferStoredFlowState(storedValue, backendState)
           && !isUserPendingReceiver(currentUser, latestTransaction)
         if (preferStoredState) {
-          return mergeStoredProgressIntoFlowState(backendState, storedValue)
-        }
-
-        if (getFlowCommentCount(backendState) === 0 && getFlowCommentCount(storedValue) > 0) {
-          return mergeStoredCommentsIntoFlowState(backendState, storedValue)
+          return mergeStoredCommentsIntoFlowState(
+            mergeStoredProgressIntoFlowState(backendState, storedValue),
+            backendState
+          )
         }
 
         return mergeStoredCommentsIntoFlowState(backendState, storedValue)
